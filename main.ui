@@ -1,38 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
+<class>MainWindow</class>
+ <!-- ========================= MAIN WINDOW ========================= -->
  <widget class="QMainWindow" name="MainWindow">
+
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>601</height>
+    <width>900</width>
+    <height>650</height>
    </rect>
   </property>
+
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Custom Python IDE</string>
   </property>
+
+  <!-- ========================= CENTRAL EDITOR ========================= -->
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout">
     <item row="0" column="0">
+     <!-- Custom Code Editor -->
      <widget class="CodeEditor" name="textEdit"/>
     </item>
    </layout>
   </widget>
+
+  <!-- ========================= MENU BAR ========================= -->
   <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>800</width>
-     <height>26</height>
-    </rect>
-   </property>
+
+   <!-- ================= FILE MENU ================= -->
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+
     <addaction name="actionNew"/>
     <addaction name="separator"/>
     <addaction name="actionOpen"/>
@@ -44,10 +47,13 @@
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
+
+   <!-- ================= EDIT MENU ================= -->
    <widget class="QMenu" name="menuEdit">
     <property name="title">
      <string>Edit</string>
     </property>
+
     <addaction name="actionUndo"/>
     <addaction name="actionRedo"/>
     <addaction name="separator"/>
@@ -55,10 +61,14 @@
     <addaction name="actionCopy"/>
     <addaction name="actionPaste"/>
    </widget>
+
+   <!-- ================= VIEW MENU ================= -->
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
+
+    <!-- Theme submenu -->
     <widget class="QMenu" name="menuTheme">
      <property name="title">
       <string>Theme</string>
@@ -66,6 +76,8 @@
      <addaction name="actionDark_Theme"/>
      <addaction name="actionLight_Theme"/>
     </widget>
+
+    <!-- Font submenu -->
     <widget class="QMenu" name="menuFont_Size">
      <property name="title">
       <string>Font Size</string>
@@ -73,121 +85,165 @@
      <addaction name="actionIncrease_font_size"/>
      <addaction name="actionDecrease_Font_Size"/>
     </widget>
+
     <addaction name="menuTheme"/>
     <addaction name="separator"/>
     <addaction name="menuFont_Size"/>
    </widget>
+
+   <!-- ================= BUILD & DEBUG MENU ================= -->
+   <widget class="QMenu" name="menuBuildDebug">
+    <property name="title">
+     <string>Build &amp; Debug</string>
+    </property>
+
+    <addaction name="actionBuildProject"/>
+    <addaction name="actionRebuild"/>
+    <addaction name="actionClean"/>
+    <addaction name="actionBuildSolution"/>
+    <addaction name="separator"/>
+    <addaction name="actionStartDebugging"/>
+    <addaction name="actionStartWithoutDebugging"/>
+    <addaction name="separator"/>
+    <addaction name="actionStopDebugging"/>
+    <addaction name="actionRestartDebugging"/>
+    <addaction name="actionAttachProcess"/>
+   </widget>
+
+   <!-- Add all menus to top bar -->
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
+   <addaction name="menuBuildDebug"/>
+
   </widget>
+
+  <!-- ========================= STATUS BAR ========================= -->
   <widget class="QStatusBar" name="statusbar"/>
+
+  <!-- ========================= ACTION DEFINITIONS ========================= -->
+
+  <!-- FILE ACTIONS -->
   <action name="actionNew">
-   <property name="text">
-    <string>New...</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+N</string>
-   </property>
+   <property name="text"><string>New</string></property>
+   <property name="shortcut"><string>Ctrl+N</string></property>
   </action>
+
   <action name="actionOpen">
-   <property name="text">
-    <string>Open...</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+O</string>
-   </property>
+   <property name="text"><string>Open</string></property>
+   <property name="shortcut"><string>Ctrl+O</string></property>
   </action>
+
   <action name="actionSave">
-   <property name="text">
-    <string>Save</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+S</string>
-   </property>
+   <property name="text"><string>Save</string></property>
+   <property name="shortcut"><string>Ctrl+S</string></property>
   </action>
+
   <action name="actionSave_As">
-   <property name="text">
-    <string>Save As...</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Shift+S</string>
-   </property>
+   <property name="text"><string>Save As</string></property>
+   <property name="shortcut"><string>Ctrl+Shift+S</string></property>
   </action>
-  <action name="actionExit">
-   <property name="text">
-    <string>Exit</string>
-   </property>
-  </action>
+
   <action name="actionClose">
-   <property name="text">
-    <string>Close</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+W</string>
-   </property>
+   <property name="text"><string>Close</string></property>
+   <property name="shortcut"><string>Ctrl+W</string></property>
   </action>
+
+  <action name="actionExit">
+   <property name="text"><string>Exit</string></property>
+   <property name="shortcut"><string>Alt+F4</string></property>
+  </action>
+
+  <!-- EDIT ACTIONS -->
   <action name="actionUndo">
-   <property name="text">
-    <string>Undo</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Z</string>
-   </property>
+   <property name="text"><string>Undo</string></property>
+   <property name="shortcut"><string>Ctrl+Z</string></property>
   </action>
+
   <action name="actionRedo">
-   <property name="text">
-    <string>Redo</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Y</string>
-   </property>
+   <property name="text"><string>Redo</string></property>
+   <property name="shortcut"><string>Ctrl+Y</string></property>
   </action>
+
   <action name="actionCut">
-   <property name="text">
-    <string>Cut</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+X</string>
-   </property>
+   <property name="text"><string>Cut</string></property>
+   <property name="shortcut"><string>Ctrl+X</string></property>
   </action>
+
   <action name="actionCopy">
-   <property name="text">
-    <string>Copy</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+C</string>
-   </property>
+   <property name="text"><string>Copy</string></property>
+   <property name="shortcut"><string>Ctrl+C</string></property>
   </action>
+
   <action name="actionPaste">
-   <property name="text">
-    <string>Paste</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+V</string>
-   </property>
+   <property name="text"><string>Paste</string></property>
+   <property name="shortcut"><string>Ctrl+V</string></property>
   </action>
+
+  <!-- VIEW ACTIONS -->
   <action name="actionDark_Theme">
-   <property name="text">
-    <string>Dark Theme</string>
-   </property>
+   <property name="text"><string>Dark Theme</string></property>
   </action>
+
   <action name="actionLight_Theme">
-   <property name="text">
-    <string>Light Theme</string>
-   </property>
+   <property name="text"><string>Light Theme</string></property>
   </action>
+
   <action name="actionIncrease_font_size">
-   <property name="text">
-    <string>Increase Font Size</string>
-   </property>
+   <property name="text"><string>Increase Font Size</string></property>
+   <property name="shortcut"><string>Ctrl++</string></property>
   </action>
+
   <action name="actionDecrease_Font_Size">
-   <property name="text">
-    <string>Decrease Font Size</string>
-   </property>
+   <property name="text"><string>Decrease Font Size</string></property>
+   <property name="shortcut"><string>Ctrl+-</string></property>
   </action>
+
+  <!-- BUILD & DEBUG ACTIONS -->
+  <action name="actionBuildProject">
+   <property name="text"><string>Build Project</string></property>
+   <property name="shortcut"><string>Ctrl+B</string></property>
+  </action>
+
+  <action name="actionRebuild">
+   <property name="text"><string>Rebuild</string></property>
+   <property name="shortcut"><string>Ctrl+Shift+B</string></property>
+  </action>
+
+  <action name="actionClean">
+   <property name="text"><string>Clean</string></property>
+  </action>
+
+  <action name="actionBuildSolution">
+   <property name="text"><string>Build Solution</string></property>
+  </action>
+
+  <action name="actionStartDebugging">
+   <property name="text"><string>Start Debugging</string></property>
+   <property name="shortcut"><string>F5</string></property>
+  </action>
+
+  <action name="actionStartWithoutDebugging">
+   <property name="text"><string>Start Without Debugging</string></property>
+   <property name="shortcut"><string>Ctrl+F5</string></property>
+  </action>
+
+  <action name="actionStopDebugging">
+   <property name="text"><string>Stop Debugging</string></property>
+   <property name="shortcut"><string>Shift+F5</string></property>
+  </action>
+
+  <action name="actionRestartDebugging">
+   <property name="text"><string>Restart Debugging</string></property>
+  </action>
+
+  <action name="actionAttachProcess">
+   <property name="text"><string>Attach to Process</string></property>
+  </action>
+
  </widget>
+
+ <!-- Custom Code Editor -->
  <customwidgets>
   <customwidget>
    <class>CodeEditor</class>
@@ -195,6 +251,7 @@
    <header>code_editor</header>
   </customwidget>
  </customwidgets>
+
  <resources/>
  <connections/>
 </ui>

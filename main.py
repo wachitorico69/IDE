@@ -7,8 +7,14 @@ class Main(QMainWindow):
     def __init__(self):
         super(Main, self).__init__()
         loadUi("main.ui", self) # carga main.ui en la clase
+        # =========================
+        # VARIABLES
+        # =========================
         self.current_path = None # para saber si es un archivo existente o nuevo
         self.current_fontSize = 10 # tam de la fuente
+        # =========================
+        # EDITOR INITIAL SETUP
+        # =========================
         initFont = self.textEdit.font()
         initFont.setPointSize(self.current_fontSize)
         self.textEdit.setFont(initFont)
@@ -19,23 +25,50 @@ class Main(QMainWindow):
         self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
 
-        # acciones y funciones para cada opción
+           # =========================
+        # FILE ACTIONS
+        # =========================
         self.actionNew.triggered.connect(self.newFile)
         self.actionOpen.triggered.connect(self.openFile)
         self.actionSave.triggered.connect(self.saveFile)
         self.actionSave_As.triggered.connect(self.saveFileAs)
         self.actionClose.triggered.connect(self.closeFile)
         self.actionExit.triggered.connect(self.close)
-        self.actionUndo.triggered.connect(self.undo)
-        self.actionRedo.triggered.connect(self.redo)
-        self.actionCut.triggered.connect(self.cut)
-        self.actionCopy.triggered.connect(self.copy)
-        self.actionPaste.triggered.connect(self.paste)
+
+        # =========================
+        # EDIT ACTIONS
+        # =========================
+        self.actionUndo.triggered.connect(self.textEdit.undo)
+        self.actionRedo.triggered.connect(self.textEdit.redo)
+        self.actionCut.triggered.connect(self.textEdit.cut)
+        self.actionCopy.triggered.connect(self.textEdit.copy)
+        self.actionPaste.triggered.connect(self.textEdit.paste)
+
+        # =========================
+        # VIEW ACTIONS
+        # =========================
         self.actionDark_Theme.triggered.connect(self.setDarkTheme)
         self.actionLight_Theme.triggered.connect(self.setLightTheme)
         self.actionIncrease_font_size.triggered.connect(self.increaseFont)
         self.actionDecrease_Font_Size.triggered.connect(self.decreaseFont)
 
+        # =========================
+        # BUILD & DEBUG ACTIONS
+        # =========================
+        self.actionBuildProject.triggered.connect(self.buildProject)
+        self.actionRebuild.triggered.connect(self.rebuild)
+        self.actionClean.triggered.connect(self.clean)
+        self.actionBuildSolution.triggered.connect(self.buildSolution)
+
+        self.actionStartDebugging.triggered.connect(self.runFile)
+        self.actionStartWithoutDebugging.triggered.connect(self.runFile)
+        self.actionStopDebugging.triggered.connect(self.stopExecution)
+        self.actionRestartDebugging.triggered.connect(self.restartExecution)
+        self.actionAttachProcess.triggered.connect(self.attachProcess)
+
+    # =========================
+    # STATUS BAR FUNCTION
+    # =========================
     def update_cursor_position(self):
         cursor = self.textEdit.textCursor() # obtener cursor actual
         line = cursor.blockNumber() + 1 # linea actual
@@ -43,7 +76,9 @@ class Main(QMainWindow):
 
         self.statusBar().showMessage(f"Ln {line}, Col {col}") # mostrar
 
-    # file
+    # =========================
+    # FILE FUNCTIONS
+    # =========================
     def newFile(self):
         self.textEdit.clear()
         self.setWindowTitle("IDE - Untitled")
@@ -135,7 +170,9 @@ class Main(QMainWindow):
     def paste(self):
         self.textEdit.paste()
     
-    # view
+    # =========================
+    # VIEW FUNCTIONS
+    # =========================
     def setDarkTheme(self):
         self.setStyleSheet('''QWidget{
                            background-color: rgb(33,33,33);
@@ -164,6 +201,48 @@ class Main(QMainWindow):
         fuente.setPointSize(self.current_fontSize)
         self.textEdit.setFont(fuente)
 
+ # =========================
+    # BUILD (No funciona)
+    # =========================
+    def buildProject(self):
+        self.statusBar().showMessage("Building project...")
+
+    def rebuild(self):
+        self.statusBar().showMessage("Rebuilding project...")
+
+    def clean(self):
+        self.statusBar().showMessage("Cleaning project...")
+
+    def buildSolution(self):
+        self.statusBar().showMessage("Building solution...")
+
+
+    # =========================
+    # DEBUG / RUN SYSTEM
+    # =========================
+    def runFile(self):
+        if not self.current_path:
+            QMessageBox.warning(self, "Error", "Please save the file before running.")
+            return
+
+        self.statusBar().showMessage("Running...")
+        self.process.start("python", [self.current_path])
+
+    def stopExecution(self):
+        self.process.kill()
+        self.statusBar().showMessage("Execution stopped.")
+
+    def restartExecution(self):
+        self.stopExecution()
+        self.runFile()
+
+    def attachProcess(self):
+        QMessageBox.information(self, "Attach Process", "Feature not implemented yet.")
+
+
+# =========================
+# START APPLICATION
+# =========================
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ui = Main()
