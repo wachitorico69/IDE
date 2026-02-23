@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame
 from PyQt5.uic import loadUi
 import sys
 
@@ -8,7 +8,16 @@ class Main(QMainWindow):
         super(Main, self).__init__()
         loadUi("main.ui", self) # carga main.ui en la clase
         self.current_path = None # para saber si es un archivo existente o nuevo
+        self.current_fontSize = 10 # tam de la fuente
+        initFont = self.textEdit.font()
+        initFont.setPointSize(self.current_fontSize)
+        self.textEdit.setFont(initFont)
+        self.textEdit.setFrameShape(QFrame.NoFrame)
         self.setWindowTitle("IDE - Untitled") # nombre default
+
+        # cursor
+        self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
+        self.update_cursor_position()
 
         # acciones y funciones para cada opción
         self.actionNew.triggered.connect(self.newFile)
@@ -16,16 +25,23 @@ class Main(QMainWindow):
         self.actionSave.triggered.connect(self.saveFile)
         self.actionSave_As.triggered.connect(self.saveFileAs)
         self.actionClose.triggered.connect(self.closeFile)
-        self.actionExit.triggered.connect(self.closeEvent)
+        self.actionExit.triggered.connect(self.close)
         self.actionUndo.triggered.connect(self.undo)
         self.actionRedo.triggered.connect(self.redo)
         self.actionCut.triggered.connect(self.cut)
         self.actionCopy.triggered.connect(self.copy)
         self.actionPaste.triggered.connect(self.paste)
-        #self.actionDark_Theme.triggered.connect(self.setDarkTheme)
-        #self.actionLight_Theme.triggered.connect(self.setLightTheme)
-        #self.actionIncrease_font_size.triggered.connect(self.increaseFont)
-        #self.actionDecrease_font_size.triggered.connect(self.decreaseFont)
+        self.actionDark_Theme.triggered.connect(self.setDarkTheme)
+        self.actionLight_Theme.triggered.connect(self.setLightTheme)
+        self.actionIncrease_font_size.triggered.connect(self.increaseFont)
+        self.actionDecrease_Font_Size.triggered.connect(self.decreaseFont)
+
+    def update_cursor_position(self):
+        cursor = self.textEdit.textCursor() # obtener cursor actual
+        line = cursor.blockNumber() + 1 # linea actual
+        col = cursor.columnNumber() + 1 # columna
+
+        self.statusBar().showMessage(f"Ln {line}, Col {col}") # mostrar
 
     # file
     def newFile(self):
@@ -40,7 +56,7 @@ class Main(QMainWindow):
             self.setWindowTitle("IDE - " + fileName) # agregar path del archivo al titulo
             with open(fileName, 'r') as f:
                 fileText = f.read()
-                self.textEdit.setText(fileText) # mostrar el texto del archivo
+                self.textEdit.setPlainText(fileText) # mostrar el texto del archivo
             self.current_path = fileName # archivo abierto
 
     def saveFile(self):
@@ -75,6 +91,7 @@ class Main(QMainWindow):
                 self.current_path = None
                 self.setWindowTitle("IDE - Untitled")
 
+    # función para exit o cuando se presiona la X de la ventana, dialogo de seguridad para el usuario
     def closeEvent(self, event):
         if self.textEdit.toPlainText() != "":
             respuesta = QMessageBox.question(
@@ -88,7 +105,7 @@ class Main(QMainWindow):
             if respuesta == QMessageBox.Yes:
                 event.accept() 
             else:
-                return 
+                event.ignore() 
         else:
             event.accept()
 
@@ -97,7 +114,7 @@ class Main(QMainWindow):
         
         if pathName:
             fileText = self.textEdit.toPlainText()
-            with open(pathName[0], 'w') as f:
+            with open(pathName, 'w') as f:
                 f.write(fileText)
             self.current_path = pathName
             self.setWindowTitle("IDE - " + pathName)
@@ -117,6 +134,35 @@ class Main(QMainWindow):
 
     def paste(self):
         self.textEdit.paste()
+    
+    # view
+    def setDarkTheme(self):
+        self.setStyleSheet('''QWidget{
+                           background-color: rgb(33,33,33);
+                           color: #FFFFFF;
+                           }
+                           QPlaintTextEdit{
+                           background-color: rgb(46,46,46);
+                           border: none;
+                           }
+                           QMenuBar::item:selected{
+                           color: #000000
+                           } ''')
+
+    def setLightTheme(self):
+        self.setStyleSheet("") # string vacío que regresa el claro
+    
+    def increaseFont(self): 
+        self.current_fontSize += 1
+        font = self.textEdit.font()
+        font.setPointSize(self.current_fontSize)
+        self.textEdit.setFont(font)
+
+    def decreaseFont(self):
+        self.current_fontSize -= 1
+        fuente = self.textEdit.font()
+        fuente.setPointSize(self.current_fontSize)
+        self.textEdit.setFont(fuente)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
