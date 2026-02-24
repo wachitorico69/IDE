@@ -59,7 +59,7 @@ class CodeEditor(QPlainTextEdit):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(blockNumber + 1)
-                painter.setPen(QColor("#858585")) # color del número
+                painter.setPen(QColor("#FFFFFF")) # color del número
                 painter.drawText(0, int(top), self.lineNumberArea.width(), self.fontMetrics().height(),
                                  Qt.AlignRight, number)
             block = block.next()

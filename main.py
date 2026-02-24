@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit
 from PyQt5.uic import loadUi
+from PyQt5.QtCore import Qt
 import sys
 
 # clase que hereda las propiedas de qmainwindow
@@ -51,6 +52,7 @@ class Main(QMainWindow):
         self.actionLight_Theme.triggered.connect(self.setLightTheme)
         self.actionIncrease_font_size.triggered.connect(self.increaseFont)
         self.actionDecrease_Font_Size.triggered.connect(self.decreaseFont)
+        self.actionTerminal.triggered.connect(self.showTerminal)
 
         # =========================
         # BUILD & DEBUG ACTIONS
@@ -65,6 +67,28 @@ class Main(QMainWindow):
         self.actionStopDebugging.triggered.connect(self.stopExecution)
         self.actionRestartDebugging.triggered.connect(self.restartExecution)
         self.actionAttachProcess.triggered.connect(self.attachProcess)
+
+        # ==========================================
+        # TERMINAL
+        # ==========================================
+        self.terminalPanel = QDockWidget("Terminal", self)
+        self.terminalPanel.setAllowedAreas(Qt.BottomDockWidgetArea) # anclada en la parte de abajo
+        
+        self.terminalOutput = QTextEdit()
+        self.terminalOutput.setReadOnly(True) # lectura pq solo muestra mensajes
+        
+        self.terminalOutput.setStyleSheet("""
+            QTextEdit {
+                background-color: #ffffff;
+                color: #000000;
+                font-family: Consolas, monospace;
+                font-size: 10pt;
+                border: none;
+            }
+        """)
+        
+        self.terminalPanel.setWidget(self.terminalOutput)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.terminalPanel)
 
     # =========================
     # STATUS BAR FUNCTION
@@ -185,9 +209,27 @@ class Main(QMainWindow):
                            QMenuBar::item:selected{
                            color: #000000
                            } ''')
+        self.terminalOutput.setStyleSheet("""
+            QTextEdit {
+                background-color: rgb(33,33,33);
+                color: #ffffff;
+                font-family: Consolas, monospace;
+                font-size: 10pt;
+                border: none;
+            }
+        """)
 
     def setLightTheme(self):
         self.setStyleSheet("") # string vacío que regresa el claro
+        self.terminalOutput.setStyleSheet("""
+            QTextEdit {
+                background-color: #ffffff;
+                color: #000000;
+                font-family: Consolas, monospace;
+                font-size: 10pt;
+                border: none;
+            }
+        """)
     
     def increaseFont(self): 
         self.current_fontSize += 1
@@ -200,6 +242,12 @@ class Main(QMainWindow):
         fuente = self.textEdit.font()
         fuente.setPointSize(self.current_fontSize)
         self.textEdit.setFont(fuente)
+
+    def showTerminal(self):
+        if self.terminalPanel.isVisible():
+            self.terminalPanel.hide()
+        else:
+            self.terminalPanel.show()
 
  # =========================
     # BUILD (No funciona)
