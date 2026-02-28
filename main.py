@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
 import sys
@@ -89,6 +89,101 @@ class Main(QMainWindow):
         
         self.terminalPanel.setWidget(self.terminalOutput)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.terminalPanel)
+
+        # ==========================================
+        # LATERAL BAR (ACTIVITY BAR)
+        # ==========================================
+        
+        # contenedor apilado
+        self.stackedPanels = QStackedWidget()
+        
+        # área de texto para cada opción
+        self.panelLexico = QTextEdit()
+        self.panelLexico.setReadOnly(True)
+        self.panelLexico.setFrameShape(QFrame.NoFrame)
+        self.panelLexico.setPlainText("Análisis Léxico...")
+        
+        self.panelSintactico = QTextEdit()
+        self.panelSintactico.setReadOnly(True)
+        self.panelSintactico.setFrameShape(QFrame.NoFrame)
+        self.panelSintactico.setPlainText("Análisis Sintáctico...")
+
+        self.panelSemantico = QTextEdit()
+        self.panelSemantico.setReadOnly(True)
+        self.panelSemantico.setFrameShape(QFrame.NoFrame)
+        self.panelSemantico.setPlainText("Análisis Semántico...")
+
+        self.panelTabla = QTextEdit()
+        self.panelTabla.setReadOnly(True)
+        self.panelTabla.setFrameShape(QFrame.NoFrame)
+        self.panelTabla.setPlainText("Tabla de Símbolos...")
+
+        self.panelCodigo = QTextEdit()
+        self.panelCodigo.setReadOnly(True)
+        self.panelCodigo.setFrameShape(QFrame.NoFrame)
+        self.panelCodigo.setPlainText("Código Intermedio...")
+
+        self.stackedPanels.addWidget(self.panelLexico)
+        self.stackedPanels.addWidget(self.panelSintactico)
+        self.stackedPanels.addWidget(self.panelSemantico)
+        self.stackedPanels.addWidget(self.panelTabla)
+        self.stackedPanels.addWidget(self.panelCodigo)
+
+        self.sideBarDock = QDockWidget("Análisis Léxico", self)
+        self.sideBarDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.sideBarDock.setWidget(self.stackedPanels)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.sideBarDock)
+
+        # barra de botones vertical
+        self.activityBar = QToolBar("Barra de Actividades")
+        self.activityBar.setMovable(False) 
+        self.addToolBar(Qt.LeftToolBarArea, self.activityBar)
+
+        self.activityBar.setStyleSheet("""
+            QToolBar {
+                border: none;
+                background: transparent;
+            }
+            QToolButton {
+                min-width: 80px; 
+                max-width: 80px;
+                padding: 6px;
+                font-size: 13px;
+                border: 1px solid #c0c0c0; 
+                background-color: #f8f9fa; 
+            }
+            QToolButton:hover {
+                background-color: #e2e6ea; 
+                border: 1px solid #a0a0a0;
+            }
+            QToolButton:pressed {
+                background-color: #dae0e5; 
+            }
+        """)
+        
+        self.addToolBar(Qt.LeftToolBarArea, self.activityBar)
+
+        # acciones de botones
+        self.actLexico = QAction("Léxico", self)
+        self.actSintactico = QAction("Sintáctico", self)
+        self.actSemantico = QAction("Semántico", self)
+        self.actTabla = QAction("Tabla Símb.", self)
+        self.actCodigo = QAction("Código Int.", self)
+
+        # agregar botones a la barra
+        self.activityBar.addAction(self.actLexico)
+        self.activityBar.addAction(self.actSintactico)
+        self.activityBar.addAction(self.actSemantico)
+        self.activityBar.addAction(self.actTabla)
+        self.activityBar.addAction(self.actCodigo)
+
+        self.actLexico.triggered.connect(lambda: self.switchSidePanel(0, "Análisis Léxico"))
+        self.actSintactico.triggered.connect(lambda: self.switchSidePanel(1, "Análisis Sintáctico"))
+        self.actSemantico.triggered.connect(lambda: self.switchSidePanel(2, "Análisis Semántico"))
+        self.actTabla.triggered.connect(lambda: self.switchSidePanel(3, "Tabla de Símbolos"))
+        self.actCodigo.triggered.connect(lambda: self.switchSidePanel(4, "Código Intermedio"))
+
+        self.setLightTheme()      
 
     # =========================
     # STATUS BAR FUNCTION
@@ -198,17 +293,55 @@ class Main(QMainWindow):
     # VIEW FUNCTIONS
     # =========================
     def setDarkTheme(self):
-        self.setStyleSheet('''QWidget{
-                           background-color: rgb(33,33,33);
-                           color: #FFFFFF;
-                           }
-                           QPlaintTextEdit{
-                           background-color: rgb(46,46,46);
-                           border: none;
-                           }
-                           QMenuBar::item:selected{
-                           color: #000000
-                           } ''')
+        self.setStyleSheet('''
+            QWidget {
+                background-color: rgb(33,33,33);
+                color: #FFFFFF;
+            }
+            QPlainTextEdit, QTextEdit { 
+                background-color: rgb(46,46,46);
+                border: none;
+                outline: none; 
+            }
+            QMenuBar {
+                background-color: rgb(33,33,33);
+            }
+            QMenuBar::item {
+                padding: 5px 12px; 
+                border-right: 1px solid #555555; 
+            }
+            QMenuBar::item:selected {
+                background-color: rgb(60,60,60); 
+            } 
+            QMenu {
+                background-color: rgb(46,46,46); 
+                border: 1px solid #555555; 
+            }
+            QMenu::item:selected {
+                background-color: rgb(60,60,60);
+            }
+        ''')
+        self.activityBar.setStyleSheet("""
+            QToolBar {
+                border: none;
+                background: transparent;
+            }
+            QToolButton {
+                min-width: 80px; 
+                max-width: 80px;
+                padding: 6px;
+                font-size: 13px;
+                border: 1px solid #c0c0c0; 
+                background-color: rgb(33,33,33);
+            }
+            QToolButton:hover {
+                background-color: rgb(60,60,60); 
+                border: 1px solid #a0a0a0;
+            }
+            QToolButton:pressed {
+                background-color: #dae0e5; 
+            }
+        """)
         self.terminalOutput.setStyleSheet("""
             QTextEdit {
                 background-color: rgb(33,33,33);
@@ -220,7 +353,37 @@ class Main(QMainWindow):
         """)
 
     def setLightTheme(self):
-        self.setStyleSheet("") # string vacío que regresa el claro
+        self.setStyleSheet('''
+            QMenuBar::item {
+                padding: 5px 12px;
+                border-right: 1px solid #cccccc; 
+            }
+            QMenuBar::item:selected {
+                background-color: #e0e0e0;
+            } 
+        ''')
+        self.activityBar.setStyleSheet("""
+            QToolBar {
+                border: none;
+                background: transparent;
+            }
+            QToolButton {
+                min-width: 80px; 
+                max-width: 80px;
+                padding: 6px;
+                font-size: 13px;
+                border: 1px solid #c0c0c0; 
+                background-color: #f8f9fa; 
+            }
+            QToolButton:hover {
+                background-color: #e2e6ea; 
+                border: 1px solid #a0a0a0;
+            }
+            QToolButton:pressed {
+                background-color: #dae0e5; 
+            }
+        """)
+        
         self.terminalOutput.setStyleSheet("""
             QTextEdit {
                 background-color: #ffffff;
@@ -248,6 +411,20 @@ class Main(QMainWindow):
             self.terminalPanel.hide()
         else:
             self.terminalPanel.show()
+
+    def switchSidePanel(self, index, title):
+        # Si el panel está oculto, lo mostramos primero
+        if not self.sideBarDock.isVisible():
+            self.sideBarDock.show()
+        
+        # Si hacemos clic en el botón del panel que YA estamos viendo, lo ocultamos (estilo VS Code)
+        elif self.stackedPanels.currentIndex() == index:
+            self.sideBarDock.hide()
+            return
+
+        # Cambiamos a la vista seleccionada y actualizamos el título del panel
+        self.stackedPanels.setCurrentIndex(index)
+        self.sideBarDock.setWindowTitle(title)
 
  # =========================
     # BUILD (No funciona)
@@ -294,5 +471,5 @@ class Main(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ui = Main()
-    ui.show()
+    ui.showMaximized()
     app.exec_()

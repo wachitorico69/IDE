@@ -95,10 +95,23 @@
     <addaction name="actionRestartDebugging"/>
     <addaction name="actionAttachProcess"/>
    </widget>
+   <widget class="QMenu" name="menuCompilar">
+    <property name="title">
+     <string>Compilar</string>
+    </property>
+    <addaction name="actionL_xico"/>
+    <addaction name="actionSint_ctico"/>
+    <addaction name="actionSem_ntico"/>
+    <addaction name="separator"/>
+    <addaction name="actionGenerar_c_digo_intermedio"/>
+    <addaction name="separator"/>
+    <addaction name="actionEjecutar"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
    <addaction name="menuBuildDebug"/>
+   <addaction name="menuCompilar"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionNew">
@@ -281,6 +294,31 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Ñ</string>
+   </property>
+  </action>
+  <action name="actionL_xico">
+   <property name="text">
+    <string>Léxico</string>
+   </property>
+  </action>
+  <action name="actionSint_ctico">
+   <property name="text">
+    <string>Sintáctico</string>
+   </property>
+  </action>
+  <action name="actionSem_ntico">
+   <property name="text">
+    <string>Semántico</string>
+   </property>
+  </action>
+  <action name="actionGenerar_c_digo_intermedio">
+   <property name="text">
+    <string>Generar Código Intermedio</string>
+   </property>
+  </action>
+  <action name="actionEjecutar">
+   <property name="text">
+    <string>Ejecutar</string>
    </property>
   </action>
  </widget>
