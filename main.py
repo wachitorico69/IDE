@@ -58,20 +58,6 @@ class Main(QMainWindow):
         self.actionDecrease_Font_Size.triggered.connect(self.decreaseFont)
         self.actionTerminal.triggered.connect(self.showTerminal)
 
-        # =========================
-        # BUILD & DEBUG ACTIONS
-        # =========================
-        self.actionBuildProject.triggered.connect(self.buildProject)
-        self.actionRebuild.triggered.connect(self.rebuild)
-        self.actionClean.triggered.connect(self.clean)
-        self.actionBuildSolution.triggered.connect(self.buildSolution)
-
-        self.actionStartDebugging.triggered.connect(self.runFile)
-        self.actionStartWithoutDebugging.triggered.connect(self.runFile)
-        self.actionStopDebugging.triggered.connect(self.stopExecution)
-        self.actionRestartDebugging.triggered.connect(self.restartExecution)
-        self.actionAttachProcess.triggered.connect(self.attachProcess)
-
         # ==========================================
         # TERMINAL
         # ==========================================
@@ -149,10 +135,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 80px; 
-                max-width: 80px;
+                min-width: 55px; 
+                max-width: 55px;
                 padding: 6px;
-                font-size: 13px;
+                font-size: 10px;
                 border: 1px solid #c0c0c0; 
                 background-color: #f8f9fa; 
             }
@@ -310,10 +296,6 @@ class Main(QMainWindow):
             QMenuBar {
                 background-color: rgb(33,33,33);
             }
-            QMenuBar::item {
-                padding: 5px 12px; 
-                border-right: 1px solid #555555; 
-            }
             QMenuBar::item:selected {
                 background-color: rgb(60,60,60); 
             } 
@@ -331,10 +313,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 80px; 
-                max-width: 80px;
+                min-width: 55px; 
+                max-width: 55px;
                 padding: 6px;
-                font-size: 13px;
+                font-size: 10px;
                 border: 1px solid #c0c0c0; 
                 background-color: rgb(33,33,33);
             }
@@ -358,10 +340,6 @@ class Main(QMainWindow):
 
     def setLightTheme(self):
         self.setStyleSheet('''
-            QMenuBar::item {
-                padding: 5px 12px;
-                border-right: 1px solid #cccccc; 
-            }
             QMenuBar::item:selected {
                 background-color: #e0e0e0;
             } 
@@ -372,10 +350,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 80px; 
-                max-width: 80px;
+                min-width: 55px; 
+                max-width: 55px;
                 padding: 6px;
-                font-size: 13px;
+                font-size: 10px;
                 border: 1px solid #c0c0c0; 
                 background-color: #f8f9fa; 
             }
@@ -429,44 +407,6 @@ class Main(QMainWindow):
         # Cambiamos a la vista seleccionada y actualizamos el título del panel
         self.stackedPanels.setCurrentIndex(index)
         self.sideBarDock.setWindowTitle(title)
-
- # =========================
-    # BUILD (No funciona)
-    # =========================
-    def buildProject(self):
-        self.statusBar().showMessage("Building project...")
-
-    def rebuild(self):
-        self.statusBar().showMessage("Rebuilding project...")
-
-    def clean(self):
-        self.statusBar().showMessage("Cleaning project...")
-
-    def buildSolution(self):
-        self.statusBar().showMessage("Building solution...")
-
-
-    # =========================
-    # DEBUG / RUN SYSTEM
-    # =========================
-    def runFile(self):
-        if not self.current_path:
-            QMessageBox.warning(self, "Error", "Please save the file before running.")
-            return
-
-        self.statusBar().showMessage("Running...")
-        self.process.start("python", [self.current_path])
-
-    def stopExecution(self):
-        self.process.kill()
-        self.statusBar().showMessage("Execution stopped.")
-
-    def restartExecution(self):
-        self.stopExecution()
-        self.runFile()
-
-    def attachProcess(self):
-        QMessageBox.information(self, "Attach Process", "Feature not implemented yet.")
 
 
 # =========================

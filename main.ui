@@ -20,13 +20,14 @@
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
      <width>900</width>
-     <height>26</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -79,22 +80,6 @@
     <addaction name="separator"/>
     <addaction name="actionTerminal"/>
    </widget>
-   <widget class="QMenu" name="menuBuildDebug">
-    <property name="title">
-     <string>Build &amp; Debug</string>
-    </property>
-    <addaction name="actionBuildProject"/>
-    <addaction name="actionRebuild"/>
-    <addaction name="actionClean"/>
-    <addaction name="actionBuildSolution"/>
-    <addaction name="separator"/>
-    <addaction name="actionStartDebugging"/>
-    <addaction name="actionStartWithoutDebugging"/>
-    <addaction name="separator"/>
-    <addaction name="actionStopDebugging"/>
-    <addaction name="actionRestartDebugging"/>
-    <addaction name="actionAttachProcess"/>
-   </widget>
    <widget class="QMenu" name="menuCompilar">
     <property name="title">
      <string>Compilar</string>
@@ -110,10 +95,8 @@
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
-   <addaction name="menuBuildDebug"/>
    <addaction name="menuCompilar"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionNew">
    <property name="text">
     <string>New</string>
