@@ -1,19 +1,22 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QListWidget, QListWidgetItem
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import sys
+import os
 
 # clase que hereda las propiedas de qmainwindow
 class Main(QMainWindow):
     def __init__(self):
         super(Main, self).__init__()
         loadUi("main.ui", self) # carga main.ui en la clase
+        
         # =========================
         # VARIABLES
         # =========================
         self.current_path = None # para saber si es un archivo existente o nuevo
         self.current_fontSize = 10 # tam de la fuente
+
         # =========================
         # EDITOR INITIAL SETUP
         # =========================
@@ -30,7 +33,7 @@ class Main(QMainWindow):
         self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
 
-           # =========================
+        # =========================
         # FILE ACTIONS
         # =========================
         self.actionNew.triggered.connect(self.newFile)
@@ -79,13 +82,25 @@ class Main(QMainWindow):
         
         self.terminalPanel.setWidget(self.terminalOutput)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.terminalPanel)
+        self.resizeDocks([self.terminalPanel], [160], Qt.Vertical)
 
         # ==========================================
         # LATERAL BAR (ACTIVITY BAR)
         # ==========================================
+        self.opened_files_content = {} # diccionario para guardar el texto: {ruta: texto}
         
         # contenedor apilado
         self.stackedPanels = QStackedWidget()
+        
+        # explorador archivos
+        self.panelArchivos = QListWidget()
+        self.panelArchivos.setFrameShape(QFrame.NoFrame)
+        self.panelArchivos.setStyleSheet("QListWidget { background-color: transparent; border: none; }")
+        self.panelArchivos.itemClicked.connect(self.switchToFile) # click cambiar archivo
+        
+        # cerrar archivo click derecho
+        self.panelArchivos.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.panelArchivos.customContextMenuRequested.connect(self.showFileContextMenu)
         
         # área de texto para cada opción
         self.panelLexico = QTextEdit()
@@ -113,13 +128,14 @@ class Main(QMainWindow):
         self.panelCodigo.setFrameShape(QFrame.NoFrame)
         self.panelCodigo.setPlainText("Código Intermedio...")
 
+        self.stackedPanels.addWidget(self.panelArchivos)
         self.stackedPanels.addWidget(self.panelLexico)
         self.stackedPanels.addWidget(self.panelSintactico)
         self.stackedPanels.addWidget(self.panelSemantico)
         self.stackedPanels.addWidget(self.panelTabla)
         self.stackedPanels.addWidget(self.panelCodigo)
 
-        self.sideBarDock = QDockWidget("Análisis Léxico", self)
+        self.sideBarDock = QDockWidget("Explorer", self)
         self.sideBarDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.sideBarDock.setWidget(self.stackedPanels)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.sideBarDock)
@@ -154,6 +170,7 @@ class Main(QMainWindow):
         self.addToolBar(Qt.LeftToolBarArea, self.activityBar)
 
         # acciones de botones
+        self.actArchivos = QAction("Archivos", self)
         self.actLexico = QAction("Léxico", self)
         self.actSintactico = QAction("Sintáctico", self)
         self.actSemantico = QAction("Semántico", self)
@@ -161,17 +178,19 @@ class Main(QMainWindow):
         self.actCodigo = QAction("Código Int.", self)
 
         # agregar botones a la barra
+        self.activityBar.addAction(self.actArchivos)
         self.activityBar.addAction(self.actLexico)
         self.activityBar.addAction(self.actSintactico)
         self.activityBar.addAction(self.actSemantico)
         self.activityBar.addAction(self.actTabla)
         self.activityBar.addAction(self.actCodigo)
 
-        self.actLexico.triggered.connect(lambda: self.switchSidePanel(0, "Análisis Léxico"))
-        self.actSintactico.triggered.connect(lambda: self.switchSidePanel(1, "Análisis Sintáctico"))
-        self.actSemantico.triggered.connect(lambda: self.switchSidePanel(2, "Análisis Semántico"))
-        self.actTabla.triggered.connect(lambda: self.switchSidePanel(3, "Tabla de Símbolos"))
-        self.actCodigo.triggered.connect(lambda: self.switchSidePanel(4, "Código Intermedio"))
+        self.actArchivos.triggered.connect(lambda: self.switchSidePanel(0, 'Explorer'))
+        self.actLexico.triggered.connect(lambda: self.switchSidePanel(1, "Análisis Léxico"))
+        self.actSintactico.triggered.connect(lambda: self.switchSidePanel(2, "Análisis Sintáctico"))
+        self.actSemantico.triggered.connect(lambda: self.switchSidePanel(3, "Análisis Semántico"))
+        self.actTabla.triggered.connect(lambda: self.switchSidePanel(4, "Tabla de Símbolos"))
+        self.actCodigo.triggered.connect(lambda: self.switchSidePanel(5, "Código Intermedio"))
 
         self.setLightTheme()      
 
@@ -197,11 +216,31 @@ class Main(QMainWindow):
         fileName, _ = QFileDialog.getOpenFileName(self, 'Open File', '', 'All files (*.*)')
         
         if fileName:
-            self.setWindowTitle("IDE - " + fileName) # agregar path del archivo al titulo
+            # guardar el progreso del archivo q teníamos abierto actualmente
+            if self.current_path:
+                self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
+
+            # leer nuevo archivo
             with open(fileName, 'r') as f:
                 fileText = f.read()
-                self.textEdit.setPlainText(fileText) # mostrar el texto del archivo
-            self.current_path = fileName # archivo abierto
+            
+            # guardarlo en diccionario de memoria
+            self.opened_files_content[fileName] = fileText
+            
+            # revisar si ya está en la lista o si no agregarlo
+            items = self.panelArchivos.findItems(os.path.basename(fileName), Qt.MatchExactly)
+            if not items:
+                item = QListWidgetItem(os.path.basename(fileName)) # mostrar el nombre
+                item.setData(Qt.UserRole, fileName) # guardar la ruta completa de forma invisible
+                self.panelArchivos.addItem(item)
+            
+            # mostrar en editor
+            self.textEdit.setPlainText(fileText)
+            self.current_path = fileName
+            self.setWindowTitle("IDE - " + fileName)
+            
+            # actualización del panel lateral para mostrar los archivos
+            self.switchSidePanel(0, "Explorer")
 
     def saveFile(self):
         if self.current_path is not None:
@@ -212,28 +251,44 @@ class Main(QMainWindow):
             self.saveFileAs() # guardar como si es un archivo nuevo
 
     def closeFile(self):
-        # verificar si hay texto
+        # si hay texto preguntar para guardar
         if self.textEdit.toPlainText() != "":
             respuesta = QMessageBox.question(
                 self, 
                 "Close File", 
                 "Do you want to save the changes you made? Your changes will be lost if you don't save them.",
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
-                QMessageBox.Yes # no seleccionado por default
+                QMessageBox.Yes 
             )
             
             if respuesta == QMessageBox.Cancel:
                 return
-            elif respuesta == QMessageBox.No:
-                # cerrar archivo
-                self.textEdit.clear()
-                self.current_path = None
-                self.setWindowTitle("IDE - Untitled")
-            else:
+            elif respuesta == QMessageBox.Yes:
                 self.saveFile()
-                self.textEdit.clear()
-                self.current_path = None
-                self.setWindowTitle("IDE - Untitled")
+
+        # para limpiar lista del explorer
+        if self.current_path:
+            # quitar del diccionario
+            if self.current_path in self.opened_files_content:
+                del self.opened_files_content[self.current_path]
+                
+            # quitarlo del panel
+            items = self.panelArchivos.findItems(os.path.basename(self.current_path), Qt.MatchExactly)
+            for item in items:
+                if item.data(Qt.UserRole) == self.current_path:
+                    row = self.panelArchivos.row(item)
+                    self.panelArchivos.takeItem(row)
+                    break
+
+        # cargar el siguiente archivo abierto o limpiar la pantalla
+        self.current_path = None # Desvinculamos la ruta actual
+        
+        if self.panelArchivos.count() > 0:
+            ultimo_item = self.panelArchivos.item(self.panelArchivos.count() - 1)
+            self.switchToFile(ultimo_item)
+        else:
+            self.textEdit.clear()
+            self.setWindowTitle("IDE - Untitled")
 
     # función para exit o cuando se presiona la X de la ventana, dialogo de seguridad para el usuario
     def closeEvent(self, event):
@@ -252,16 +307,27 @@ class Main(QMainWindow):
                 event.ignore() 
         else:
             event.accept()
-
+    
     def saveFileAs(self):
-        pathName, _ = QFileDialog.getSaveFileName(self, 'Save File', '', 'Text files (*.*)')
+        pathName, _ = QFileDialog.getSaveFileName(self, 'Save File', '', 'All files (*.*)')
         
         if pathName:
             fileText = self.textEdit.toPlainText()
             with open(pathName, 'w') as f:
                 f.write(fileText)
+                
             self.current_path = pathName
             self.setWindowTitle("IDE - " + pathName)
+
+            self.opened_files_content[pathName] = fileText
+            
+            items = self.panelArchivos.findItems(os.path.basename(pathName), Qt.MatchExactly)
+            if not items:
+                item = QListWidgetItem(os.path.basename(pathName))
+                item.setData(Qt.UserRole, pathName)
+                self.panelArchivos.addItem(item)
+                
+            self.switchSidePanel(0, "Explorer")
 
     # edit
     def undo(self):
@@ -395,19 +461,99 @@ class Main(QMainWindow):
             self.terminalPanel.show()
 
     def switchSidePanel(self, index, title):
-        # Si el panel está oculto, lo mostramos primero
+        # mostrar panel si está oculto
         if not self.sideBarDock.isVisible():
             self.sideBarDock.show()
         
-        # Si hacemos clic en el botón del panel que YA estamos viendo, lo ocultamos (estilo VS Code)
+        # ocultar panel si se hace click en el botón del q se está mostrando
         elif self.stackedPanels.currentIndex() == index:
             self.sideBarDock.hide()
             return
 
-        # Cambiamos a la vista seleccionada y actualizamos el título del panel
+        # cambiar panel y título al seleccionado
         self.stackedPanels.setCurrentIndex(index)
         self.sideBarDock.setWindowTitle(title)
 
+    # =========================
+    # FILE EXPLORER FUNCTIONS
+    # =========================
+    def switchToFile(self, item):
+        # Obtener la ruta completa que guardamos de forma invisible
+        clicked_path = item.data(Qt.UserRole) 
+        
+        # Si ya estamos en ese archivo, no hacemos nada
+        if clicked_path == self.current_path: return
+        
+        # Guardar cambios del archivo que estamos a punto de abandonar
+        if self.current_path:
+            self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
+            
+        # Cargar el contenido del archivo que le dimos click
+        self.textEdit.setPlainText(self.opened_files_content.get(clicked_path, ""))
+        self.current_path = clicked_path
+        self.setWindowTitle("IDE - " + clicked_path)
+
+    def showFileContextMenu(self, pos):
+        # menú click derecho
+        item = self.panelArchivos.itemAt(pos)
+        if not item: return
+        
+        menu = QMenu()
+        close_action = menu.addAction("Close File")
+        action = menu.exec_(self.panelArchivos.mapToGlobal(pos))
+        
+        if action == close_action:
+            self.closeFileFromExplorer(item)
+
+    def closeFileFromExplorer(self, item):
+        path_to_remove = item.data(Qt.UserRole)
+        nombre_archivo = os.path.basename(path_to_remove)
+        
+        # preguntar por los cambios hechos (si es que hubo)
+        respuesta = QMessageBox.question(
+            self, 
+            "Close File", 
+            f"Do you want to save the changes to '{nombre_archivo}'?\nYour changes will be lost if you don't save them.",
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
+            QMessageBox.Yes 
+        )
+        
+        # cancelar
+        if respuesta == QMessageBox.Cancel:
+            return
+            
+        # guardar
+        elif respuesta == QMessageBox.Yes:
+            if path_to_remove == self.current_path:
+                # archivo activo
+                fileText = self.textEdit.toPlainText()
+            else:
+                # archivo en segundo plano
+                fileText = self.opened_files_content.get(path_to_remove, "")
+                
+            # sobrescribir
+            with open(path_to_remove, 'w') as f:
+                f.write(fileText)
+
+        # se quita de la lista
+        row = self.panelArchivos.row(item)
+        self.panelArchivos.takeItem(row)
+        
+        # se quita del diccionario
+        if path_to_remove in self.opened_files_content:
+            del self.opened_files_content[path_to_remove]
+            
+        # si cierra un archivo
+        if path_to_remove == self.current_path:            
+            self.current_path = None 
+            
+            if self.panelArchivos.count() > 0:
+                # último archivo de la lista y lo abrimos
+                ultimo_item = self.panelArchivos.item(self.panelArchivos.count() - 1)
+                self.switchToFile(ultimo_item)
+            else:
+                self.textEdit.clear()
+                self.setWindowTitle("IDE - Untitled")
 
 # =========================
 # START APPLICATION
