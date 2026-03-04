@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 import sys
 
 # clase que hereda las propiedas de qmainwindow
@@ -16,11 +17,14 @@ class Main(QMainWindow):
         # =========================
         # EDITOR INITIAL SETUP
         # =========================
-        initFont = self.textEdit.font()
-        initFont.setPointSize(self.current_fontSize)
-        self.textEdit.setFont(initFont)
+        fuente_editor = QFont("Consolas", self.current_fontSize)
+        self.textEdit.document().setDefaultFont(fuente_editor) 
+        self.textEdit.setFont(fuente_editor) 
         self.textEdit.setFrameShape(QFrame.NoFrame)
-        self.setWindowTitle("IDE - Untitled") # nombre default
+
+        self.textEdit.updateLineNumberAreaWidth(0) # soluciona overlap del editor y barra de numeros
+
+        self.setWindowTitle("IDE - Untitled")
 
         # cursor
         self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
@@ -396,15 +400,15 @@ class Main(QMainWindow):
     
     def increaseFont(self): 
         self.current_fontSize += 1
-        font = self.textEdit.font()
-        font.setPointSize(self.current_fontSize)
+        font = QFont("Consolas", self.current_fontSize)
+        self.textEdit.document().setDefaultFont(font)
         self.textEdit.setFont(font)
 
     def decreaseFont(self):
         self.current_fontSize -= 1
-        fuente = self.textEdit.font()
-        fuente.setPointSize(self.current_fontSize)
-        self.textEdit.setFont(fuente)
+        font = QFont("Consolas", self.current_fontSize)
+        self.textEdit.document().setDefaultFont(font)
+        self.textEdit.setFont(font)
 
     def showTerminal(self):
         if self.terminalPanel.isVisible():

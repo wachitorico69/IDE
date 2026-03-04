@@ -16,12 +16,16 @@ class LineNumberArea(QWidget):
 class CodeEditor(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # activar scroll lateral
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
+
         # espacio de los numeros de linea
         self.lineNumberArea = LineNumberArea(self)
         self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
         self.updateRequest.connect(self.updateLineNumberArea)
         self.updateLineNumberAreaWidth(0)
         # para resaltar la linea actual
+
         self.cursorPositionChanged.connect(self.highlightCurrentLine)
         self.highlightCurrentLine()
 
