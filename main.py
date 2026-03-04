@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QListWidget, QListWidgetItem
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
 import sys
 import os
@@ -592,12 +592,50 @@ class Main(QMainWindow):
         self.actionEjecutar.setIcon(style.standardIcon(style.SP_MediaPlay))
 
         #Iconos apareciendo en el ToolBar
-        self.toolBar.setMovable(False)
-        self.toolBar.setFloatable(False)
-        self.toolBar.addAction(self.actionNew)
-        self.toolBar.addAction(self.actionOpen)
-        self.toolBar.addAction(self.actionSave)
-        self.menuBar().setCornerWidget(self.toolBar, Qt.TopRightCorner) 
+        quickBar = QToolBar("Quick Access", self.menuBar())
+        quickBar.setMovable(False)
+        quickBar.setFloatable(False)
+        quickBar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        # FILE section
+        quickBar.addAction(self.actionNew)
+        quickBar.addAction(self.actionOpen)
+        quickBar.addAction(self.actionSave)
+        quickBar.addAction(self.actionSave_As)
+        quickBar.addAction(self.actionClose)
+        quickBar.addAction(self.actionExit)
+        quickBar.addSeparator()  # |
+
+        # EDIT section
+        quickBar.addAction(self.actionUndo)
+        quickBar.addAction(self.actionRedo)
+        quickBar.addSeparator()  # |
+        quickBar.addAction(self.actionCut)
+        quickBar.addAction(self.actionCopy)
+        quickBar.addAction(self.actionPaste)
+        quickBar.addSeparator()  # |
+
+        # VIEW section
+        quickBar.addAction(self.actionDark_Theme)
+        quickBar.addAction(self.actionLight_Theme)
+        quickBar.addSeparator()  # |
+        quickBar.addAction(self.actionIncrease_font_size)
+        quickBar.addAction(self.actionDecrease_Font_Size)
+        quickBar.addSeparator()  # |
+        quickBar.addAction(self.actionTerminal)
+        quickBar.addSeparator()  # |
+
+        # COMPILAR section
+        quickBar.addAction(self.actionL_xico)
+        quickBar.addAction(self.actionSint_ctico)
+        quickBar.addAction(self.actionSem_ntico)
+        quickBar.addSeparator()  # |
+        quickBar.addAction(self.actionGenerar_c_digo_intermedio)
+        quickBar.addSeparator()  # |
+        quickBar.addAction(self.actionEjecutar)
+
+        # tamaño de los iconos
+        quickBar.setIconSize(QSize(16, 16))
+        self.addToolBar(Qt.TopToolBarArea, quickBar)
 
 
 # =========================
