@@ -30,6 +30,9 @@ class Main(QMainWindow):
         self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
 
+        #iconos
+        self.setup_icons()
+
            # =========================
         # FILE ACTIONS
         # =========================
@@ -407,6 +410,47 @@ class Main(QMainWindow):
         # Cambiamos a la vista seleccionada y actualizamos el título del panel
         self.stackedPanels.setCurrentIndex(index)
         self.sideBarDock.setWindowTitle(title)
+
+    #metodo para agregar iconos
+    def setup_icons(self):
+        style = self.style()
+
+        # iconos en FILE
+        self.actionNew.setIcon(style.standardIcon(style.SP_FileIcon))
+        self.actionOpen.setIcon(style.standardIcon(style.SP_DirIcon))
+        self.actionSave.setIcon(style.standardIcon(style.SP_DialogSaveButton))
+        self.actionSave_As.setIcon(style.standardIcon(style.SP_DriveFDIcon))
+        self.actionClose.setIcon(style.standardIcon(style.SP_DialogCloseButton))
+        self.actionExit.setIcon(style.standardIcon(style.SP_TitleBarCloseButton))
+
+        # Iconos en Menu
+        self.actionUndo.setIcon(style.standardIcon(style.SP_ArrowBack))
+        self.actionRedo.setIcon(style.standardIcon(style.SP_ArrowForward))
+        self.actionCut.setIcon(style.standardIcon(style.SP_DialogResetButton))
+        self.actionCopy.setIcon(style.standardIcon(style.SP_FileDialogContentsView))
+        self.actionPaste.setIcon(style.standardIcon(style.SP_FileDialogDetailedView))
+
+        # Iconos en Vista
+        self.actionDark_Theme.setIcon(style.standardIcon(style.SP_DesktopIcon))
+        self.actionLight_Theme.setIcon(style.standardIcon(style.SP_DesktopIcon))
+        self.actionIncrease_font_size.setIcon(style.standardIcon(style.SP_ArrowUp))
+        self.actionDecrease_Font_Size.setIcon(style.standardIcon(style.SP_ArrowDown))
+        self.actionTerminal.setIcon(style.standardIcon(style.SP_ComputerIcon))
+
+        #Iconos en Compilar
+        self.actionL_xico.setIcon(style.standardIcon(style.SP_FileDialogContentsView))
+        self.actionSint_ctico.setIcon(style.standardIcon(style.SP_FileDialogListView))
+        self.actionSem_ntico.setIcon(style.standardIcon(style.SP_FileDialogDetailedView))
+        self.actionGenerar_c_digo_intermedio.setIcon(style.standardIcon(style.SP_FileDialogNewFolder))
+        self.actionEjecutar.setIcon(style.standardIcon(style.SP_MediaPlay))
+
+        #Iconos apareciendo en el ToolBar
+        self.toolBar.setMovable(False)
+        self.toolBar.setFloatable(False)
+        self.toolBar.addAction(self.actionNew)
+        self.toolBar.addAction(self.actionOpen)
+        self.toolBar.addAction(self.actionSave)
+        self.menuBar().setCornerWidget(self.toolBar, Qt.TopRightCorner) 
 
 
 # =========================
