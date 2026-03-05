@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QTreeWidget, QTreeWidgetItem
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
@@ -16,6 +16,12 @@ class Main(QMainWindow):
         # =========================
         self.current_path = None # para saber si es un archivo existente o nuevo
         self.current_fontSize = 10 # tam de la fuente
+
+        # EXTENSIONES PROHIBIDAS
+        self.ignored_extensions = [
+            '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.exe', '.dll',
+            '.zip', '.rar', '.7z', '.tar', '.mp3', '.mp4'
+        ]
 
         # =========================
         # EDITOR INITIAL SETUP
@@ -37,11 +43,12 @@ class Main(QMainWindow):
         #iconos
         self.setup_icons()
 
-           # =========================
+        # =========================
         # FILE ACTIONS
         # =========================
         self.actionNew.triggered.connect(self.newFile)
         self.actionOpen.triggered.connect(self.openFile)
+        self.actionOpen_Folder.triggered.connect(self.openFolder)
         self.actionSave.triggered.connect(self.saveFile)
         self.actionSave_As.triggered.connect(self.saveFileAs)
         self.actionClose.triggered.connect(self.closeFile)
@@ -97,14 +104,17 @@ class Main(QMainWindow):
         self.stackedPanels = QStackedWidget()
         
         # explorador archivos
-        self.panelArchivos = QListWidget()
+        self.panelArchivos = QTreeWidget()
+        self.panelArchivos.setHeaderHidden(True) # ocultar la cabecera superior
         self.panelArchivos.setFrameShape(QFrame.NoFrame)
-        self.panelArchivos.setStyleSheet("QListWidget { background-color: transparent; border: none; }")
         self.panelArchivos.itemClicked.connect(self.switchToFile) # click cambiar archivo
         
         # cerrar archivo click derecho
         self.panelArchivos.setContextMenuPolicy(Qt.CustomContextMenu)
         self.panelArchivos.customContextMenuRequested.connect(self.showFileContextMenu)
+        
+        # diccionario para agrupar las carpetas
+        self.tree_groups = {}
         
         # área de texto para cada opción
         self.panelLexico = QTextEdit()
@@ -270,11 +280,7 @@ class Main(QMainWindow):
     
             self.opened_files_content[fileName] = fileText
             
-            items = self.panelArchivos.findItems(os.path.basename(fileName), Qt.MatchExactly)
-            if not items:
-                item = QListWidgetItem(os.path.basename(fileName)) 
-                item.setData(Qt.UserRole, fileName) 
-                self.panelArchivos.addItem(item)
+            self.addFileToTree(fileName)
             
             self.textEdit.setPlainText(fileText)
             self.current_path = fileName
@@ -292,45 +298,31 @@ class Main(QMainWindow):
             self.saveFileAs() # guardar como si es un archivo nuevo
 
     def closeFile(self):
-        # si hay texto preguntar para guardar
         if self.textEdit.toPlainText() != "":
-            respuesta = QMessageBox.question(
-                self, 
-                "Close File", 
-                "Do you want to save the changes you made? Your changes will be lost if you don't save them.",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
-                QMessageBox.Yes 
-            )
-            
-            if respuesta == QMessageBox.Cancel:
-                return
-            elif respuesta == QMessageBox.Yes:
-                self.saveFile()
+            respuesta = QMessageBox.question(self, "Close File", "Save changes?", QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Yes)
+            if respuesta == QMessageBox.Cancel: return
+            elif respuesta == QMessageBox.Yes: self.saveFile()
 
-        # para limpiar lista del explorer
         if self.current_path:
-            # quitar del diccionario
-            if self.current_path in self.opened_files_content:
-                del self.opened_files_content[self.current_path]
-                
-            # quitarlo del panel
-            items = self.panelArchivos.findItems(os.path.basename(self.current_path), Qt.MatchExactly)
-            for item in items:
-                if item.data(Qt.UserRole) == self.current_path:
-                    row = self.panelArchivos.row(item)
-                    self.panelArchivos.takeItem(row)
-                    break
+            if self.current_path in self.opened_files_content: del self.opened_files_content[self.current_path]
+            
+            # quitar del árbol
+            folder_path = os.path.dirname(self.current_path)
+            if folder_path in self.tree_groups:
+                root = self.tree_groups[folder_path]
+                for i in range(root.childCount()):
+                    if root.child(i).data(0, Qt.UserRole) == self.current_path:
+                        root.removeChild(root.child(i))
+                        if root.childCount() == 0:
+                            self.panelArchivos.takeTopLevelItem(self.panelArchivos.indexOfTopLevelItem(root))
+                            del self.tree_groups[folder_path]
+                        break
 
-        # cargar el siguiente archivo abierto o limpiar la pantalla
-        self.current_path = None # desvincular la ruta actual
+        self.current_path = None 
         self.textEdit.clear()
-        
-        if self.panelArchivos.count() > 0:
-            ultimo_item = self.panelArchivos.item(self.panelArchivos.count() - 1)
-            self.switchToFile(ultimo_item)
-        else:
-            self.textEdit.clear()
-            self.setWindowTitle("IDE - Untitled")
+        archivos_restantes = self.get_all_file_items()
+        if archivos_restantes: self.switchToFile(archivos_restantes[-1])
+        else: self.setWindowTitle("IDE - Untitled")
 
     # función para exit o cuando se presiona la X de la ventana, dialogo de seguridad para el usuario
     def closeEvent(self, event):
@@ -363,12 +355,29 @@ class Main(QMainWindow):
 
             self.opened_files_content[pathName] = fileText
             
-            items = self.panelArchivos.findItems(os.path.basename(pathName), Qt.MatchExactly)
-            if not items:
-                item = QListWidgetItem(os.path.basename(pathName))
-                item.setData(Qt.UserRole, pathName)
-                self.panelArchivos.addItem(item)
+            self.addFileToTree(pathName)
                 
+            self.switchSidePanel(0, "Explorer")
+    
+    def openFolder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, 'Open Folder', '')
+        
+        if folder_path:
+            # lista de los elementos de la carpeta
+            archivos = os.listdir(folder_path)
+            
+            for archivo in archivos:
+                ruta_completa = os.path.join(folder_path, archivo)
+                ruta_completa = ruta_completa.replace('\\', '/')
+
+                if os.path.isfile(ruta_completa):
+                    _, extension = os.path.splitext(ruta_completa) # extrae extensión
+                    
+                    # agregar si no está en la lista negra
+                    if extension.lower() not in self.ignored_extensions:
+                        self.addFileToTree(ruta_completa)
+            
+            # mostrar
             self.switchSidePanel(0, "Explorer")
 
     # edit
@@ -519,35 +528,67 @@ class Main(QMainWindow):
     # =========================
     # FILE EXPLORER FUNCTIONS
     # =========================
-    def switchToFile(self, item):
-        # ruta completa
-        clicked_path = item.data(Qt.UserRole) 
+    def addFileToTree(self, file_path):
+        file_path = file_path.replace('\\', '/')
+        folder_path = os.path.dirname(file_path)
+        folder_name = os.path.basename(folder_path)
+
+        if folder_path not in self.tree_groups:
+            root_item = QTreeWidgetItem(self.panelArchivos, [folder_name.upper()])
+            root_item.setData(0, Qt.UserRole, folder_path)
+            font = root_item.font(0)
+            font.setBold(True)
+            root_item.setFont(0, font)
+            root_item.setExpanded(True) # abierto por defecto
+            
+            self.tree_groups[folder_path] = root_item
+        else:
+            root_item = self.tree_groups[folder_path]
+
+        # no duplicar archivo
+        for i in range(root_item.childCount()):
+            if root_item.child(i).data(0, Qt.UserRole) == file_path:
+                return 
+
+        # archivo como hijo de la carpeta
+        file_item = QTreeWidgetItem(root_item, [os.path.basename(file_path)])
+        file_item.setData(0, Qt.UserRole, file_path)
+
+    def get_all_file_items(self):
+        # ver los archivos abiertos del árbol
+        items = []
+        for i in range(self.panelArchivos.topLevelItemCount()):
+            root = self.panelArchivos.topLevelItem(i)
+            for j in range(root.childCount()):
+                items.append(root.child(j))
+        return items
+
+    def switchToFile(self, item, column=0):
+        # ruta
+        clicked_path = item.data(0, Qt.UserRole) 
         
-        # no hacer nada si ya esta en ese archivo
+        # si es carpeta solo se expande/cierra sola
+        if not os.path.isfile(clicked_path): return
+        
         if clicked_path == self.current_path: return
         
-        # si estamos en untitled y tiene texto, preguntar si desea guardarlo
         if self.current_path is None and self.textEdit.toPlainText().strip() != "":
-            respuesta = QMessageBox.question(
-                self, 
-                "Save File", 
-                "Do you want to save the changes to your 'Untitled' file before switching?",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
-                QMessageBox.Yes 
-            )
-            
-            if respuesta == QMessageBox.Cancel:
-                return 
+            respuesta = QMessageBox.question(self, "Save File", "Do you want to save your 'Untitled' file?", QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Yes)
+            if respuesta == QMessageBox.Cancel: return 
             elif respuesta == QMessageBox.Yes:
                 self.saveFileAs()
-                if self.current_path is None:
-                    return
+                if self.current_path is None: return
                     
-        # si el archivo que vamos a abandonar ya tiene ruta, lo guardamos en el diccionario
         elif self.current_path is not None:
             self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
             
-        # cargar contenido del archivo
+        if clicked_path not in self.opened_files_content:
+            try:
+                with open(clicked_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    self.opened_files_content[clicked_path] = f.read()
+            except Exception as e:
+                return
+                
         self.textEdit.setPlainText(self.opened_files_content.get(clicked_path, ""))
         self.current_path = clicked_path
         self.setWindowTitle("IDE - " + clicked_path)
@@ -557,63 +598,96 @@ class Main(QMainWindow):
         item = self.panelArchivos.itemAt(pos)
         if not item: return
         
+        ruta_item = item.data(0, Qt.UserRole)
         menu = QMenu()
-        close_action = menu.addAction("Close File")
-        action = menu.exec_(self.panelArchivos.mapToGlobal(pos))
         
-        if action == close_action:
-            self.closeFileFromExplorer(item)
-
-    def closeFileFromExplorer(self, item):
-        path_to_remove = item.data(Qt.UserRole)
-        nombre_archivo = os.path.basename(path_to_remove)
+        # si la ruta es de un archivo entonces "Close File"
+        if os.path.isfile(ruta_item):
+            close_action = menu.addAction("Close File")
+            action = menu.exec_(self.panelArchivos.mapToGlobal(pos))
+            if action == close_action:
+                self.closeFileFromExplorer(item)
+                
+        # si no entonces "Close Folder"
+        else:
+            close_action = menu.addAction("Close Folder")
+            action = menu.exec_(self.panelArchivos.mapToGlobal(pos))
+            if action == close_action:
+                self.closeFolderFromExplorer(item)
+    
+    # preguntar si se quiere cerrar la carpeta
+    def closeFolderFromExplorer(self, folder_item):
+        nombre_carpeta = folder_item.text(0)
         
-        # preguntar por los cambios hechos (si es que hubo)
         respuesta = QMessageBox.question(
             self, 
-            "Close File", 
-            f"Do you want to save the changes to '{nombre_archivo}'?\nYour changes will be lost if you don't save them.",
-            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
-            QMessageBox.Yes 
+            "Close Folder", 
+            f"Do you want to close the folder '{nombre_carpeta}' and all its files?",
+            QMessageBox.Yes | QMessageBox.No, 
+            QMessageBox.Yes
         )
         
-        # cancelar
-        if respuesta == QMessageBox.Cancel:
-            return
-            
-        # guardar
-        elif respuesta == QMessageBox.Yes:
-            if path_to_remove == self.current_path:
-                # archivo activo
-                fileText = self.textEdit.toPlainText()
-            else:
-                # archivo en segundo plano
-                fileText = self.opened_files_content.get(path_to_remove, "")
-                
-            # sobrescribir
-            with open(path_to_remove, 'w') as f:
-                f.write(fileText)
+        if respuesta == QMessageBox.No: return
 
-        # se quita de la lista
-        row = self.panelArchivos.row(item)
-        self.panelArchivos.takeItem(row)
-        
-        # se quita del diccionario
-        if path_to_remove in self.opened_files_content:
-            del self.opened_files_content[path_to_remove]
+        for i in range(folder_item.childCount() - 1, -1, -1):
+            child = folder_item.child(i)
+            exito = self.closeFileFromExplorer(child)
             
-        # si cierra un archivo
+            if exito == False:
+                return
+
+    def closeFileFromExplorer(self, item):
+        path_to_remove = item.data(0, Qt.UserRole)
+        if not os.path.isfile(path_to_remove): return False # evita cerrar el separador de golpe
+        
+        # --- NUEVA LÓGICA INTELIGENTE ---
+        necesita_comprobar = False
+        
+        if path_to_remove == self.current_path:
+            fileText = self.textEdit.toPlainText()
+            necesita_comprobar = True
+        elif path_to_remove in self.opened_files_content:
+            fileText = self.opened_files_content[path_to_remove]
+            necesita_comprobar = True
+            
+        # Solo leemos el disco duro si el archivo realmente fue abierto en el IDE
+        if necesita_comprobar:
+            try:
+                with open(path_to_remove, 'r', encoding='utf-8', errors='ignore') as f:
+                    diskText = f.read()
+            except Exception:
+                diskText = "" 
+                
+            # solo pregunta si se hicieron cambios
+            if fileText != diskText:
+                nombre_archivo = os.path.basename(path_to_remove)
+                respuesta = QMessageBox.question(self, "Close File", f"Save changes to '{nombre_archivo}'?", QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Yes)
+                
+                if respuesta == QMessageBox.Cancel: return False
+                elif respuesta == QMessageBox.Yes:
+                    with open(path_to_remove, 'w', encoding='utf-8') as f: f.write(fileText)
+        # --------------------------------
+
+        # quitar de la ui
+        parent_item = item.parent()
+        if parent_item:
+            parent_item.removeChild(item)
+            if parent_item.childCount() == 0:
+                folder_path = parent_item.data(0, Qt.UserRole)
+                self.panelArchivos.takeTopLevelItem(self.panelArchivos.indexOfTopLevelItem(parent_item))
+                del self.tree_groups[folder_path]
+        
+        # limpiar memoria
+        if path_to_remove in self.opened_files_content: del self.opened_files_content[path_to_remove]
+            
         if path_to_remove == self.current_path:            
             self.current_path = None 
             self.textEdit.clear()
+            archivos_restantes = self.get_all_file_items()
+            if archivos_restantes: self.switchToFile(archivos_restantes[-1])
+            else: self.setWindowTitle("IDE - Untitled")
             
-            if self.panelArchivos.count() > 0:
-                # último archivo de la lista y lo abrimos
-                ultimo_item = self.panelArchivos.item(self.panelArchivos.count() - 1)
-                self.switchToFile(ultimo_item)
-            else:
-                self.textEdit.clear()
-                self.setWindowTitle("IDE - Untitled")
+        return True
 
     # =========================
     # ICONOS
@@ -624,6 +698,7 @@ class Main(QMainWindow):
         # iconos en FILE
         self.actionNew.setIcon(style.standardIcon(style.SP_FileIcon))
         self.actionOpen.setIcon(style.standardIcon(style.SP_DirIcon))
+        self.actionOpen_Folder.setIcon(style.standardIcon(style.SP_DirLinkIcon))
         self.actionSave.setIcon(style.standardIcon(style.SP_DialogSaveButton))
         self.actionSave_As.setIcon(style.standardIcon(style.SP_DriveFDIcon))
         self.actionClose.setIcon(style.standardIcon(style.SP_DialogCloseButton))
@@ -658,6 +733,7 @@ class Main(QMainWindow):
         # FILE section
         quickBar.addAction(self.actionNew)
         quickBar.addAction(self.actionOpen)
+        quickBar.addAction(self.actionOpen_Folder)
         quickBar.addAction(self.actionSave)
         quickBar.addAction(self.actionSave_As)
         quickBar.addAction(self.actionClose)
