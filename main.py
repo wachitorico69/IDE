@@ -155,10 +155,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 55px; 
-                max-width: 55px;
+                min-width: 60px; 
+                max-width: 60px;
                 padding: 6px;
-                font-size: 10px;
+                font-size: 11px;
                 border: 1px solid #c0c0c0; 
                 background-color: #f8f9fa; 
             }
@@ -174,7 +174,7 @@ class Main(QMainWindow):
         self.addToolBar(Qt.LeftToolBarArea, self.activityBar)
 
         # acciones de botones
-        self.actArchivos = QAction("Archivos", self)
+        self.actArchivos = QAction("Explorer", self)
         self.actLexico = QAction("Léxico", self)
         self.actSintactico = QAction("Sintáctico", self)
         self.actSemantico = QAction("Semántico", self)
@@ -212,39 +212,76 @@ class Main(QMainWindow):
     # FILE FUNCTIONS
     # =========================
     def newFile(self):
+        # untitled con texto sin guardar
+        if self.current_path is None and self.textEdit.toPlainText().strip() != "":
+            respuesta = QMessageBox.question(
+                self, 
+                "Save File", 
+                "Do you want to save the changes to your 'Untitled' file before creating a new one?",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
+                QMessageBox.Yes 
+            )
+
+            if respuesta == QMessageBox.Cancel:
+                return 
+            
+            elif respuesta == QMessageBox.Yes:
+                self.saveFileAs()
+                if self.current_path is None: 
+                    return
+                    
+        # si estamoss viendo un archivo que si existe, guardar progreso temporal en memoria
+        elif self.current_path is not None:
+            self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
+
+        # limpiar para el nuevo archivo
         self.textEdit.clear()
         self.setWindowTitle("IDE - Untitled")
-        self.current_path = None # no hay un archivo abierto
+        self.current_path = None
     
     def openFile(self):
+        # verificar si esta en untitled y con texto
+        if self.current_path is None and self.textEdit.toPlainText().strip() != "":
+            respuesta = QMessageBox.question(
+                self, 
+                "Save File", 
+                "Do you want to save the changes to your 'Untitled' file before opening a new one?",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
+                QMessageBox.Yes 
+            )
+            
+            if respuesta == QMessageBox.Cancel:
+                return 
+            
+            # guardar como
+            elif respuesta == QMessageBox.Yes:
+                self.saveFileAs()
+                if self.current_path is None:
+                    return
+
         fileName, _ = QFileDialog.getOpenFileName(self, 'Open File', '', 'All files (*.*)')
         
         if fileName:
-            # guardar el progreso del archivo q teníamos abierto actualmente
             if self.current_path:
                 self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
 
-            # leer nuevo archivo
             with open(fileName, 'r') as f:
                 fileText = f.read()
-            
-            # guardarlo en diccionario de memoria
+    
             self.opened_files_content[fileName] = fileText
             
-            # revisar si ya está en la lista o si no agregarlo
             items = self.panelArchivos.findItems(os.path.basename(fileName), Qt.MatchExactly)
             if not items:
-                item = QListWidgetItem(os.path.basename(fileName)) # mostrar el nombre
-                item.setData(Qt.UserRole, fileName) # guardar la ruta completa de forma invisible
+                item = QListWidgetItem(os.path.basename(fileName)) 
+                item.setData(Qt.UserRole, fileName) 
                 self.panelArchivos.addItem(item)
             
-            # mostrar en editor
             self.textEdit.setPlainText(fileText)
             self.current_path = fileName
             self.setWindowTitle("IDE - " + fileName)
             
-            # actualización del panel lateral para mostrar los archivos
-            self.switchSidePanel(0, "Explorer")
+            # actualizar panel
+            self.switchSidePanel(0, "Archivos Abiertos")
 
     def saveFile(self):
         if self.current_path is not None:
@@ -285,7 +322,8 @@ class Main(QMainWindow):
                     break
 
         # cargar el siguiente archivo abierto o limpiar la pantalla
-        self.current_path = None # Desvinculamos la ruta actual
+        self.current_path = None # desvincular la ruta actual
+        self.textEdit.clear()
         
         if self.panelArchivos.count() > 0:
             ultimo_item = self.panelArchivos.item(self.panelArchivos.count() - 1)
@@ -383,10 +421,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 55px; 
-                max-width: 55px;
+                min-width: 60px; 
+                max-width: 60px;
                 padding: 6px;
-                font-size: 10px;
+                font-size: 11px;
                 border: 1px solid #c0c0c0; 
                 background-color: rgb(33,33,33);
             }
@@ -420,10 +458,10 @@ class Main(QMainWindow):
                 background: transparent;
             }
             QToolButton {
-                min-width: 55px; 
-                max-width: 55px;
+                min-width: 60px; 
+                max-width: 60px;
                 padding: 6px;
-                font-size: 10px;
+                font-size: 11px;
                 border: 1px solid #c0c0c0; 
                 background-color: #f8f9fa; 
             }
@@ -482,17 +520,34 @@ class Main(QMainWindow):
     # FILE EXPLORER FUNCTIONS
     # =========================
     def switchToFile(self, item):
-        # Obtener la ruta completa que guardamos de forma invisible
+        # ruta completa
         clicked_path = item.data(Qt.UserRole) 
         
-        # Si ya estamos en ese archivo, no hacemos nada
+        # no hacer nada si ya esta en ese archivo
         if clicked_path == self.current_path: return
         
-        # Guardar cambios del archivo que estamos a punto de abandonar
-        if self.current_path:
+        # si estamos en untitled y tiene texto, preguntar si desea guardarlo
+        if self.current_path is None and self.textEdit.toPlainText().strip() != "":
+            respuesta = QMessageBox.question(
+                self, 
+                "Save File", 
+                "Do you want to save the changes to your 'Untitled' file before switching?",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, 
+                QMessageBox.Yes 
+            )
+            
+            if respuesta == QMessageBox.Cancel:
+                return 
+            elif respuesta == QMessageBox.Yes:
+                self.saveFileAs()
+                if self.current_path is None:
+                    return
+                    
+        # si el archivo que vamos a abandonar ya tiene ruta, lo guardamos en el diccionario
+        elif self.current_path is not None:
             self.opened_files_content[self.current_path] = self.textEdit.toPlainText()
             
-        # Cargar el contenido del archivo que le dimos click
+        # cargar contenido del archivo
         self.textEdit.setPlainText(self.opened_files_content.get(clicked_path, ""))
         self.current_path = clicked_path
         self.setWindowTitle("IDE - " + clicked_path)
@@ -550,6 +605,7 @@ class Main(QMainWindow):
         # si cierra un archivo
         if path_to_remove == self.current_path:            
             self.current_path = None 
+            self.textEdit.clear()
             
             if self.panelArchivos.count() > 0:
                 # último archivo de la lista y lo abrimos
@@ -558,7 +614,10 @@ class Main(QMainWindow):
             else:
                 self.textEdit.clear()
                 self.setWindowTitle("IDE - Untitled")
-    #metodo para agregar iconos
+
+    # =========================
+    # ICONOS
+    # =========================
     def setup_icons(self):
         style = self.style()
 
@@ -634,7 +693,7 @@ class Main(QMainWindow):
         quickBar.addAction(self.actionEjecutar)
 
         # tamaño de los iconos
-        quickBar.setIconSize(QSize(16, 16))
+        quickBar.setIconSize(QSize(23, 23))
         self.addToolBar(Qt.TopToolBarArea, quickBar)
 
 
