@@ -1,6 +1,77 @@
 from PyQt5.QtWidgets import QPlainTextEdit, QWidget, QTextEdit
-from PyQt5.QtGui import QPainter, QColor, QTextFormat
+from PyQt5.QtGui import QPainter, QColor, QTextFormat, QSyntaxHighlighter, QTextCharFormat
 from PyQt5.QtCore import QRect, Qt
+from lexico import AnalizadorLexico
+
+class LexicalHighlighter(QSyntaxHighlighter):
+    def __init__(self, document):
+        super().__init__(document)
+        self.analizador = AnalizadorLexico()
+        self.tokens = []
+        self.text_cache = ""
+        
+        # COLORES 
+        self.formats = {
+            "NUM_ENTERO": self.crear_formato("#b5cea8", False),
+            "NUM_REAL": self.crear_formato("#b5cea8", False),   
+            "ID": self.crear_formato("#9cdcfe", False),         
+            "COMENTARIO": self.crear_formato("#6a9955", False), 
+            "RESERVADA": self.crear_formato("#c586c0", True),   
+            "ARITMETICO": self.crear_formato("#dcdcaa", False), 
+            "RELACIONAL": self.crear_formato("#4ec9b0", False), 
+            "LOGICO": self.crear_formato("#4ec9b0", False),      
+            "SIMBOLO": self.crear_formato("#ffd700", False),    
+            "ASIGNACION": self.crear_formato("#d4d4d4", False),  
+            "CADENA": self.crear_formato("#ce9178", False),     
+            "CARACTER": self.crear_formato("#ce9178", False)    
+        }
+
+    def crear_formato(self, color, es_negrita):
+        formato = QTextCharFormat()
+        formato.setForeground(QColor(color))
+        if es_negrita:
+            from PyQt5.QtGui import QFont
+            formato.setFontWeight(QFont.Bold)
+        return formato
+
+    def highlightBlock(self, text):
+        doc_text = self.document().toPlainText()
+        
+        if doc_text != self.text_cache:
+            self.tokens, _ = self.analizador.analizar(doc_text)
+            self.text_cache = doc_text
+
+        block_num = self.currentBlock().blockNumber() + 1
+        estado_bloque = 0 
+        
+        for t in self.tokens:
+            lineas_token = t.lexema.split('\n')
+            linea_fin = t.linea + len(lineas_token) - 1
+            
+            if t.linea <= block_num <= linea_fin:
+                if t.tipo in self.formats:
+                    formato = self.formats[t.tipo]
+                    
+                    if t.linea == linea_fin:
+                        self.setFormat(t.columna - 1, len(t.lexema), formato)
+                    else:
+                        idx_linea = block_num - t.linea
+                        sub_lexema = lineas_token[idx_linea]
+                        
+                        # usar len(text) para evitar cortes en el color
+                        if block_num == t.linea:
+                            # primera línea del bloque
+                            self.setFormat(t.columna - 1, len(text) - (t.columna - 1), formato)
+                            estado_bloque = 1 
+                        elif block_num < linea_fin:
+                            # líneas intermedias completas
+                            self.setFormat(0, len(text), formato)
+                            estado_bloque = 1 
+                        else:
+                            # última línea del bloque
+                            self.setFormat(0, len(sub_lexema), formato)
+
+        self.setCurrentBlockState(estado_bloque)
 
 class LineNumberArea(QWidget):
     def __init__(self, editor):

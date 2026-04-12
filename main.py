@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
 import sys
 import os
+from code_editor import LexicalHighlighter
+from lexico import AnalizadorLexico
 
 # clase que hereda las propiedas de qmainwindow
 class Main(QMainWindow):
@@ -16,6 +18,7 @@ class Main(QMainWindow):
         # =========================
         self.current_path = None # para saber si es un archivo existente o nuevo
         self.current_fontSize = 10 # tam de la fuente
+        self.is_dark_mode = True # saber en que tema está
 
         # EXTENSIONES PROHIBIDAS
         self.ignored_extensions = [
@@ -31,6 +34,8 @@ class Main(QMainWindow):
         self.textEdit.setFont(fuente_editor) 
         self.textEdit.setFrameShape(QFrame.NoFrame)
 
+        self.highlighter = LexicalHighlighter(self.textEdit.document()) # colores de sintaxis   
+
         self.textEdit.updateLineNumberAreaWidth(0) # soluciona overlap del editor y barra de numeros
 
         self.setWindowTitle("IDE - Untitled")
@@ -39,7 +44,6 @@ class Main(QMainWindow):
         self.textEdit.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
 
-        # =========================
         #iconos
         self.setup_icons()
 
@@ -67,10 +71,15 @@ class Main(QMainWindow):
         # VIEW ACTIONS
         # =========================
         self.actionDark_Theme.triggered.connect(self.setDarkTheme)
-        self.actionLight_Theme.triggered.connect(self.setLightTheme)
+        # self.actionLight_Theme.triggered.connect(self.setLightTheme)
         self.actionIncrease_font_size.triggered.connect(self.increaseFont)
         self.actionDecrease_Font_Size.triggered.connect(self.decreaseFont)
         self.actionTerminal.triggered.connect(self.showTerminal)
+
+        # =========================
+        # COMPILAR ACTIONS
+        # =========================
+        self.actionL_xico.triggered.connect(self.ejecutarAnalisisLexico)
 
         # ==========================================
         # TERMINAL
@@ -94,6 +103,8 @@ class Main(QMainWindow):
         self.terminalPanel.setWidget(self.terminalOutput)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.terminalPanel)
         self.resizeDocks([self.terminalPanel], [160], Qt.Vertical)
+
+        self.terminalPanel.hide()
 
         # ==========================================
         # LATERAL BAR (ACTIVITY BAR)
@@ -206,7 +217,75 @@ class Main(QMainWindow):
         self.actTabla.triggered.connect(lambda: self.switchSidePanel(4, "Tabla de Símbolos"))
         self.actCodigo.triggered.connect(lambda: self.switchSidePanel(5, "Código Intermedio"))
 
-        self.setLightTheme()      
+        self.setDarkTheme()      
+
+    def ejecutarAnalisisLexico(self):
+        # forzar la visibilidad del panel sin alternar 
+        self.stackedPanels.setCurrentIndex(1)
+        self.sideBarDock.setWindowTitle("Análisis Léxico")
+        
+        # si el panel estaba cerrado, lo abrimos, si ya estaba abierto no pasa nada
+        if not self.sideBarDock.isVisible():
+            self.sideBarDock.show()
+
+        # extraer el texto y analizarlo
+        texto = self.textEdit.toPlainText()
+        analizador = AnalizadorLexico()
+        tokens, errores = analizador.analizar(texto)
+        
+        # COLORES DEL MODO OSCURO 
+        c_titulo = "#9cdcfe"
+        c_res = "#c586c0"
+        c_num = "#b5cea8"
+        c_id = "#9cdcfe"
+        c_rel = "#4ec9b0"
+        c_com = "#6a9955"
+        c_cad = "#ce9178"
+        c_sim = "#ffd700"
+        c_def = "#dcdcaa"
+        
+        c_texto = "#ffffff"
+        c_sub = "gray"
+        c_err = "#ff0000"
+        c_ok = "#50fa7b"
+
+        # imprimir los tokens
+        html_tokens = f""
+        for t in tokens:
+            if t.tipo == "RESERVADA": color = c_res
+            elif t.tipo in ["NUM_ENTERO", "NUM_REAL"]: color = c_num
+            elif t.tipo == "ID": color = c_id
+            elif t.tipo in ["RELACIONAL", "LOGICO"]: color = c_rel
+            elif t.tipo == "COMENTARIO": color = c_com
+            elif t.tipo in ["CADENA", "CARACTER"]: color = c_cad
+            elif t.tipo == "SIMBOLO": color = c_sim
+            else: color = c_def 
+
+            html_tokens += f"""
+                <div style='margin-bottom: 6px; font-family: Consolas, monospace;'>
+                    <span style='color: {color}; font-weight: bold;'>[{t.tipo}]</span><br>
+                    <span style='color: {c_texto};'>Lexema: <b>'{t.lexema}'</b></span><br>
+                    <span style='color: {c_sub}; font-size: 11px;'>Ubicación: Línea {t.linea}, Columna {t.columna}</span>
+                    <hr style='border: 0.5px solid {c_sub}; margin-top: 4px;'>
+                </div>
+            """
+        self.panelLexico.setHtml(html_tokens)
+        
+        # gestionar errores en la terminal
+        if errores:
+            self.terminalPanel.show() 
+            html_errores = f"<h4 style='color: {c_err}; margin-top: 0;'>Errores léxicos encontrados:</h4><ul style='list-style: none; padding-left: 0; margin-top: 5px;'>"
+            for e in errores:
+                html_errores += f"<li style='color: {c_err}; margin-bottom: 5px;'>{e}</li>"
+            html_errores += "</ul>"
+            self.terminalOutput.setHtml(html_errores)
+        else:
+            self.terminalPanel.show()
+            exito_msg = f"""
+                <span style='color: {c_texto}; margin-top: 0;'>Análisis léxico finalizado con éxito.</span>
+                <span style='color: {c_texto};'>0 errores léxicos encontrados en el código.</span>
+            """
+            self.terminalOutput.setHtml(exito_msg)
 
     # =========================
     # STATUS BAR FUNCTION
@@ -400,6 +479,7 @@ class Main(QMainWindow):
     # VIEW FUNCTIONS
     # =========================
     def setDarkTheme(self):
+        self.is_dark_mode = True
         self.setStyleSheet('''
             QWidget {
                 background-color: rgb(33,33,33);
@@ -456,6 +536,7 @@ class Main(QMainWindow):
         """)
 
     def setLightTheme(self):
+        self.is_dark_mode = False
         self.setStyleSheet('''
             QMenuBar::item:selected {
                 background-color: #e0e0e0;
@@ -750,8 +831,8 @@ class Main(QMainWindow):
         quickBar.addSeparator()  # |
 
         # VIEW section
-        quickBar.addAction(self.actionDark_Theme)
-        quickBar.addAction(self.actionLight_Theme)
+        # quickBar.addAction(self.actionDark_Theme)
+        # quickBar.addAction(self.actionLight_Theme)
         quickBar.addSeparator()  # |
         quickBar.addAction(self.actionIncrease_font_size)
         quickBar.addAction(self.actionDecrease_Font_Size)
