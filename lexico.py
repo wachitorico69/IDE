@@ -28,7 +28,12 @@ class AnalizadorLexico:
             estado = "INICIO"
             lexema = ""
             col_inicio = columna
-            linea_inicio = linea # guardar línea donde nace token
+            linea_inicio = linea 
+            
+            # Variables para hacer "backtrack" (regresar en el tiempo) si el operador no se completa
+            saved_pos = pos
+            saved_linea = linea
+            saved_columna = columna
 
             while estado != "HECHO" and pos < n:
                 c = codigo[pos]
@@ -44,7 +49,7 @@ class AnalizadorLexico:
                         pos += 1
                         columna += 1
                         col_inicio = columna
-                        linea_inicio = linea # actualizar si hubo espacios o enters
+                        linea_inicio = linea 
                         continue  
                     elif c.isalpha():
                         estado = "IN_ID"
@@ -59,38 +64,38 @@ class AnalizadorLexico:
                     elif c in "<>=":
                         estado = "B_RELACIONAL"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '!':
                         estado = "B_NOT_OR_NEQ"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '&':
                         estado = "B_AND"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '|':
                         estado = "B_OR"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '+':
                         estado = "B_SUMA"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '-':
                         estado = "B_RESTA"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '/':
                         estado = "B_COMENTARIO"
                         lexema += c
-                        pos += 1
-                        columna += 1
+                        pos += 1; columna += 1
+                        saved_pos = pos; saved_linea = linea; saved_columna = columna
                     elif c == '"':
                         estado = "B_STRING"
                         lexema += c
@@ -101,9 +106,9 @@ class AnalizadorLexico:
                         lexema += c
                         pos += 1
                         columna += 1
-                    elif c in "(){},;*%^":
+                    elif c in "(){},;*%^:":
                         lexema += c
-                        tipo = "SIMBOLO" if c in "(){},;" else "ARITMETICO"
+                        tipo = "SIMBOLO" if c in "(){},;:" else "ARITMETICO"
                         tokens.append(Token(tipo, lexema, linea_inicio, col_inicio))
                         pos += 1
                         columna += 1
@@ -115,7 +120,7 @@ class AnalizadorLexico:
                         estado = "HECHO"
 
                 # ==========================================
-                # ESTADOS: IDENTIFICADORES Y RESERVADAS
+                # ESTADOS: IDENTIFICADORES Y NÚMEROS
                 # ==========================================
                 elif estado == "IN_ID":
                     if c.isalnum():
@@ -127,9 +132,6 @@ class AnalizadorLexico:
                         tokens.append(Token(tipo, lexema, linea_inicio, col_inicio))
                         estado = "HECHO"
 
-                # ==========================================
-                # ESTADOS: NÚMEROS ENTEROS Y REALES
-                # ==========================================
                 elif estado == "IN_NUM":
                     if c.isdigit():
                         lexema += c
@@ -164,93 +166,104 @@ class AnalizadorLexico:
                         estado = "HECHO"
 
                 # ==========================================
-                # ESTADOS: OPERADORES RELACIONALES Y ASIGNACIÓN
+                # ESTADOS: OPERADORES (IGNORANDO ESPACIOS)
                 # ==========================================
                 elif estado == "B_RELACIONAL":
-                    if c == '=':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace(): # ABSORBER ESPACIOS Y SALTOS
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '=':
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("RELACIONAL", lexema, linea_inicio, col_inicio))
+                        estado = "HECHO"
                     else:
-                        if lexema == "=":
-                            tokens.append(Token("ASIGNACION", lexema, linea_inicio, col_inicio))
+                        real_lexema = lexema[0] # Solo toma el primer carácter
+                        if real_lexema == "=":
+                            tokens.append(Token("ASIGNACION", real_lexema, linea_inicio, col_inicio))
                         else:
-                            tokens.append(Token("RELACIONAL", lexema, linea_inicio, col_inicio))
-                    estado = "HECHO"
+                            tokens.append(Token("RELACIONAL", real_lexema, linea_inicio, col_inicio))
+                        # Restauramos el tiempo para que los espacios absorbidos se lean de nuevo
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
                 elif estado == "B_NOT_OR_NEQ":
-                    if c == '=': 
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace():
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '=': 
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("RELACIONAL", lexema, linea_inicio, col_inicio))
+                        estado = "HECHO"
                     else: 
-                        tokens.append(Token("LOGICO", lexema, linea_inicio, col_inicio))
-                    estado = "HECHO"
+                        tokens.append(Token("LOGICO", lexema[0], linea_inicio, col_inicio))
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
-                # ==========================================
-                # ESTADOS: OPERADORES LÓGICOS
-                # ==========================================
                 elif estado == "B_AND":
-                    if c == '&':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace():
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '&':
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("LOGICO", lexema, linea_inicio, col_inicio))
+                        estado = "HECHO"
                     else:
-                        errores.append(f"Error léxico: Operador incompleto, se esperaba '&' en línea: {linea_inicio}, columna: {columna}")
-                    estado = "HECHO"
+                        errores.append(f"Error léxico: Operador incompleto, se esperaba '&' en línea: {linea_inicio}, columna: {col_inicio}")
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
                 elif estado == "B_OR":
-                    if c == '|':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace():
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '|':
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("LOGICO", lexema, linea_inicio, col_inicio))
+                        estado = "HECHO"
                     else:
-                        errores.append(f"Error léxico: Operador incompleto, se esperaba '|' en línea: {linea_inicio}, columna: {columna}")
-                    estado = "HECHO"
+                        errores.append(f"Error léxico: Operador incompleto, se esperaba '|' en línea: {linea_inicio}, columna: {col_inicio}")
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
-                # ==========================================
-                # ESTADOS: OPERADORES ARITMÉTICOS COMPUESTOS
-                # ==========================================
                 elif estado == "B_SUMA":
-                    if c == '+':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace():
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '+':
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio)) 
+                        estado = "HECHO"
                     else:
-                        tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio)) 
-                    estado = "HECHO"
+                        tokens.append(Token("ARITMETICO", lexema[0], linea_inicio, col_inicio)) 
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
                 elif estado == "B_RESTA":
-                    if c == '-':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                    if c.isspace():
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
+                    elif c == '-':
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio)) 
+                        estado = "HECHO"
                     else:
-                        tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio)) 
-                    estado = "HECHO"
+                        tokens.append(Token("ARITMETICO", lexema[0], linea_inicio, col_inicio)) 
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
+                        estado = "HECHO"
 
                 # ==========================================
-                # ESTADOS: COMENTARIOS Y DIVISIÓN
+                # ESTADOS: COMENTARIOS
                 # ==========================================
                 elif estado == "B_COMENTARIO":
                     if c == '/':
                         estado = "COMENTARIOL"
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                     elif c == '*':
                         estado = "COMENTARIOM"
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                     else:
-                        tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio)) 
+                        tokens.append(Token("ARITMETICO", lexema[0], linea_inicio, col_inicio)) 
+                        pos = saved_pos; linea = saved_linea; columna = saved_columna
                         estado = "HECHO"
 
                 elif estado == "COMENTARIOL":
@@ -258,38 +271,25 @@ class AnalizadorLexico:
                         tokens.append(Token("COMENTARIO", lexema, linea_inicio, col_inicio))
                         estado = "HECHO"
                     else:
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
 
                 elif estado == "COMENTARIOM":
                     if c == '*':
                         estado = "CIERRE_C"
                     elif c == '\n':
-                        linea += 1
-                        columna = 0
-                    lexema += c
-                    pos += 1
-                    columna += 1
+                        linea += 1; columna = 0
+                    lexema += c; pos += 1; columna += 1
 
                 elif estado == "CIERRE_C":
                     if c == '/':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("COMENTARIO", lexema, linea_inicio, col_inicio))
                         estado = "HECHO"
                     elif c == '*':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                     else:
-                        if c == '\n':
-                            linea += 1
-                            columna = 0
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        if c == '\n': linea += 1; columna = 0
+                        lexema += c; pos += 1; columna += 1
                         estado = "COMENTARIOM"
 
                 # ==========================================
@@ -297,33 +297,25 @@ class AnalizadorLexico:
                 # ==========================================
                 elif estado == "B_STRING":
                     if c == '"':
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("CADENA", lexema, linea_inicio, col_inicio))
                         estado = "HECHO"
                     elif c == '\n':
                         errores.append(f"Error léxico: Cadena sin cerrar en línea: {linea_inicio}, columna: {col_inicio}")
                         estado = "HECHO"
                     else:
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
 
                 elif estado == "B_CHAR":
                     if c == "'":
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
                         tokens.append(Token("CARACTER", lexema, linea_inicio, col_inicio))
                         estado = "HECHO"
                     elif c == '\n':
                         errores.append(f"Error léxico: Carácter sin cerrar en línea: {linea_inicio}, columna: {col_inicio}")
                         estado = "HECHO"
                     else:
-                        lexema += c
-                        pos += 1
-                        columna += 1
+                        lexema += c; pos += 1; columna += 1
 
             # ==========================================
             # MANEJO DE FIN DE ARCHIVO (EOF)
@@ -338,18 +330,27 @@ class AnalizadorLexico:
                     tokens.append(Token("NUM_REAL", lexema, linea_inicio, col_inicio))
                 elif estado == "B_REALES":
                     errores.append(f"Error léxico: Se esperaba dígito en línea: {linea_inicio}, columna: {columna}")
+                
+                # Manejo de EOF para operadores que ignoraron espacios
                 elif estado in ["B_RELACIONAL", "B_SUMA", "B_RESTA"]:
-                    if lexema == "=":
-                        tokens.append(Token("ASIGNACION", lexema, linea_inicio, col_inicio))
+                    real_lexema = lexema[0]
+                    if real_lexema == "=":
+                        tokens.append(Token("ASIGNACION", real_lexema, linea_inicio, col_inicio))
                     else:
                         tipo = "RELACIONAL" if estado == "B_RELACIONAL" else "ARITMETICO"
-                        tokens.append(Token(tipo, lexema, linea_inicio, col_inicio))
+                        tokens.append(Token(tipo, real_lexema, linea_inicio, col_inicio))
+                    pos = saved_pos; linea = saved_linea; columna = saved_columna
                 elif estado == "B_NOT_OR_NEQ":
-                    tokens.append(Token("LOGICO", lexema, linea_inicio, col_inicio))
-                elif estado == "B_AND" or estado == "B_OR":
-                    errores.append(f"Error léxico: Operador incompleto '{lexema}' en línea: {linea_inicio}, columna: {col_inicio}")
+                    tokens.append(Token("LOGICO", lexema[0], linea_inicio, col_inicio))
+                    pos = saved_pos; linea = saved_linea; columna = saved_columna
+                elif estado in ["B_AND", "B_OR"]:
+                    char_esperado = '&' if estado == "B_AND" else '|'
+                    errores.append(f"Error léxico: Operador incompleto, se esperaba '{char_esperado}' en línea: {linea_inicio}, columna: {col_inicio}")
+                    pos = saved_pos; linea = saved_linea; columna = saved_columna
                 elif estado == "B_COMENTARIO":
-                    tokens.append(Token("ARITMETICO", lexema, linea_inicio, col_inicio))
+                    tokens.append(Token("ARITMETICO", lexema[0], linea_inicio, col_inicio))
+                    pos = saved_pos; linea = saved_linea; columna = saved_columna
+                
                 elif estado == "COMENTARIOL":
                     tokens.append(Token("COMENTARIO", lexema, linea_inicio, col_inicio))
                 elif estado in ["COMENTARIOM", "CIERRE_C"]:

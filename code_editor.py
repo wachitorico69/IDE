@@ -45,7 +45,8 @@ class LexicalHighlighter(QSyntaxHighlighter):
         estado_bloque = 0 
         
         for t in self.tokens:
-            lineas_token = t.lexema.split('\n')
+            # Eliminamos posibles retornos de carro de Windows por seguridad
+            lineas_token = t.lexema.replace('\r', '').split('\n')
             linea_fin = t.linea + len(lineas_token) - 1
             
             if t.linea <= block_num <= linea_fin:
@@ -58,17 +59,14 @@ class LexicalHighlighter(QSyntaxHighlighter):
                         idx_linea = block_num - t.linea
                         sub_lexema = lineas_token[idx_linea]
                         
-                        # usar len(text) para evitar cortes en el color
                         if block_num == t.linea:
-                            # primera línea del bloque
                             self.setFormat(t.columna - 1, len(text) - (t.columna - 1), formato)
-                            estado_bloque = 1 
+                            # MAGIA: Solo los comentarios pueden heredar el color hacia abajo
+                            if t.tipo == "COMENTARIO": estado_bloque = 1 
                         elif block_num < linea_fin:
-                            # líneas intermedias completas
                             self.setFormat(0, len(text), formato)
-                            estado_bloque = 1 
+                            if t.tipo == "COMENTARIO": estado_bloque = 1 
                         else:
-                            # última línea del bloque
                             self.setFormat(0, len(sub_lexema), formato)
 
         self.setCurrentBlockState(estado_bloque)

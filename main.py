@@ -252,19 +252,26 @@ class Main(QMainWindow):
         # imprimir los tokens
         html_tokens = f""
         for t in tokens:
+            if t.tipo == "COMENTARIO":
+                continue
+            
             if t.tipo == "RESERVADA": color = c_res
             elif t.tipo in ["NUM_ENTERO", "NUM_REAL"]: color = c_num
             elif t.tipo == "ID": color = c_id
             elif t.tipo in ["RELACIONAL", "LOGICO"]: color = c_rel
-            elif t.tipo == "COMENTARIO": color = c_com
             elif t.tipo in ["CADENA", "CARACTER"]: color = c_cad
             elif t.tipo == "SIMBOLO": color = c_sim
             else: color = c_def 
 
+            lexema_mostrar = t.lexema
+            if t.tipo in ["RELACIONAL", "LOGICO", "ARITMETICO", "ASIGNACION"]:
+                # Le quitamos espacios, saltos de línea y tabulaciones para que se vea "==" o "&&"
+                lexema_mostrar = lexema_mostrar.replace(" ", "").replace("\n", "").replace("\t", "")
+
             html_tokens += f"""
                 <div style='margin-bottom: 6px; font-family: Consolas, monospace;'>
                     <span style='color: {color}; font-weight: bold;'>[{t.tipo}]</span><br>
-                    <span style='color: {c_texto};'>Lexema: <b>'{t.lexema}'</b></span><br>
+                    <span style='color: {c_texto};'>Lexema: <b>'{lexema_mostrar}'</b></span><br>
                     <span style='color: {c_sub}; font-size: 11px;'>Ubicación: Línea {t.linea}, Columna {t.columna}</span>
                     <hr style='border: 0.5px solid {c_sub}; margin-top: 4px;'>
                 </div>
