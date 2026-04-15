@@ -30,7 +30,7 @@ class AnalizadorLexico:
             col_inicio = columna
             linea_inicio = linea 
             
-            # Variables para hacer "backtrack" (regresar en el tiempo) si el operador no se completa
+            # variables para regresar en el tiempo si el operador no se completa
             saved_pos = pos
             saved_linea = linea
             saved_columna = columna
@@ -106,9 +106,9 @@ class AnalizadorLexico:
                         lexema += c
                         pos += 1
                         columna += 1
-                    elif c in "(){},;*%^:":
+                    elif c in "(){},;*%^":
                         lexema += c
-                        tipo = "SIMBOLO" if c in "(){},;:" else "ARITMETICO"
+                        tipo = "SIMBOLO" if c in "(){},;" else "ARITMETICO"
                         tokens.append(Token(tipo, lexema, linea_inicio, col_inicio))
                         pos += 1
                         columna += 1
@@ -182,7 +182,7 @@ class AnalizadorLexico:
                             tokens.append(Token("ASIGNACION", real_lexema, linea_inicio, col_inicio))
                         else:
                             tokens.append(Token("RELACIONAL", real_lexema, linea_inicio, col_inicio))
-                        # Restauramos el tiempo para que los espacios absorbidos se lean de nuevo
+                        # restaurar el tiempo para que los espacios absorbidos se lean de nuevo
                         pos = saved_pos; linea = saved_linea; columna = saved_columna
                         estado = "HECHO"
 
@@ -331,7 +331,7 @@ class AnalizadorLexico:
                 elif estado == "B_REALES":
                     errores.append(f"Error léxico: Se esperaba dígito en línea: {linea_inicio}, columna: {columna}")
                 
-                # Manejo de EOF para operadores que ignoraron espacios
+                # manejo de EOF para operadores que ignoraron espacios
                 elif estado in ["B_RELACIONAL", "B_SUMA", "B_RESTA"]:
                     real_lexema = lexema[0]
                     if real_lexema == "=":

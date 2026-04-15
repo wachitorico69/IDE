@@ -265,7 +265,7 @@ class Main(QMainWindow):
 
             lexema_mostrar = t.lexema
             if t.tipo in ["RELACIONAL", "LOGICO", "ARITMETICO", "ASIGNACION"]:
-                # Le quitamos espacios, saltos de línea y tabulaciones para que se vea "==" o "&&"
+                # quitar espacios, saltos de línea y tabulaciones para que se vea "==" o "&&"
                 lexema_mostrar = lexema_mostrar.replace(" ", "").replace("\n", "").replace("\t", "")
 
             html_tokens += f"""
