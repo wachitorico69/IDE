@@ -1,11 +1,13 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QFrame, QDockWidget, QTextEdit, QToolBar, QStackedWidget, QVBoxLayout, QWidget, QAction, QMenu, QTreeWidget, QTreeWidgetItem, QHeaderView
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 import sys
 import os
+
 from code_editor import LexicalHighlighter
 from lexico import AnalizadorLexico
+from sintactico import AnalizadorSintactico
 
 # clase que hereda las propiedas de qmainwindow
 class Main(QMainWindow):
@@ -80,6 +82,7 @@ class Main(QMainWindow):
         # COMPILAR ACTIONS
         # =========================
         self.actionL_xico.triggered.connect(self.ejecutarAnalisisLexico)
+        self.actionSint_ctico.triggered.connect(self.ejecutarAnalisisSintactico)
 
         # ==========================================
         # TERMINAL
@@ -131,27 +134,40 @@ class Main(QMainWindow):
         self.panelLexico = QTextEdit()
         self.panelLexico.setReadOnly(True)
         self.panelLexico.setFrameShape(QFrame.NoFrame)
-        self.panelLexico.setPlainText("Análisis Léxico...")
+        self.panelLexico.setPlainText("")
         
-        self.panelSintactico = QTextEdit()
-        self.panelSintactico.setReadOnly(True)
+        self.panelSintactico = QTreeWidget()
+        self.panelSintactico.setHeaderHidden(True)
         self.panelSintactico.setFrameShape(QFrame.NoFrame)
-        self.panelSintactico.setPlainText("Análisis Sintáctico...")
+        self.panelSintactico.setStyleSheet("""
+            QTreeWidget {
+                background-color: rgb(46,46,46);
+                color: #dcdcaa;
+                font-family: Consolas, monospace; 
+                font-size: 14px; 
+                border: none;
+            }
+            QTreeWidget::item:hover { background-color: rgb(60,60,60); }
+            QTreeWidget::item:selected { background-color: #062f4a; }
+        """)
+        # forzar que la columna siempre se ajuste al contenido automáticamente
+        self.panelSintactico.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.panelSintactico.header().setStretchLastSection(False)
 
         self.panelSemantico = QTextEdit()
         self.panelSemantico.setReadOnly(True)
         self.panelSemantico.setFrameShape(QFrame.NoFrame)
-        self.panelSemantico.setPlainText("Análisis Semántico...")
+        self.panelSemantico.setPlainText("")
 
         self.panelTabla = QTextEdit()
         self.panelTabla.setReadOnly(True)
         self.panelTabla.setFrameShape(QFrame.NoFrame)
-        self.panelTabla.setPlainText("Tabla de Símbolos...")
+        self.panelTabla.setPlainText("")
 
         self.panelCodigo = QTextEdit()
         self.panelCodigo.setReadOnly(True)
         self.panelCodigo.setFrameShape(QFrame.NoFrame)
-        self.panelCodigo.setPlainText("Código Intermedio...")
+        self.panelCodigo.setPlainText("")
 
         self.stackedPanels.addWidget(self.panelArchivos)
         self.stackedPanels.addWidget(self.panelLexico)
@@ -281,7 +297,7 @@ class Main(QMainWindow):
         # gestionar errores en la terminal
         if errores:
             self.terminalPanel.show() 
-            html_errores = f"<h4 style='color: {c_err}; margin-top: 0;'>Errores léxicos encontrados:</h4><ul style='list-style: none; padding-left: 0; margin-top: 5px;'>"
+            html_errores = f"<span style='color: {c_err}; margin-top: 0;'>Errores léxicos encontrados:</span><ul style='list-style: none; padding-left: 0; margin-top: 5px;'>"
             for e in errores:
                 html_errores += f"<li style='color: {c_err}; margin-bottom: 5px;'>{e}</li>"
             html_errores += "</ul>"
@@ -293,6 +309,77 @@ class Main(QMainWindow):
                 <span style='color: {c_texto};'>0 errores léxicos encontrados en el código.</span>
             """
             self.terminalOutput.setHtml(exito_msg)
+
+    def ejecutarAnalisisSintactico(self):
+        # forzar la visibilidad del panel sin alternar
+        self.stackedPanels.setCurrentIndex(2)
+        self.sideBarDock.setWindowTitle("Análisis Sintáctico")
+        if not self.sideBarDock.isVisible():
+            self.sideBarDock.show()
+
+        # limpiar árbol anterior
+        self.panelSintactico.clear()
+
+        # extraer texto y ejecutar léxico para obtener los tokens
+        texto = self.textEdit.toPlainText()
+        analizador_lex = AnalizadorLexico()
+        tokens, errores_lex = analizador_lex.analizar(texto)
+
+        if not tokens:
+            self.terminalPanel.show()
+            self.terminalOutput.setHtml("<h4 style='color: #ff5555; margin-top: 0;'>No hay tokens para analizar.</h4>")
+            return
+
+        # ejecutar sintáctico con los tokens obtenidos
+        tokens_limpios = [t for t in tokens if t.tipo != "COMENTARIO"]
+        analizador_sint = AnalizadorSintactico(tokens_limpios)
+        ast_raiz, errores_sint = analizador_sint.analizar()
+
+        # dibujar AST en el panel sintáctico
+        self.dibujarAST(ast_raiz, self.panelSintactico)
+        self.panelSintactico.expandAll() # expandir carpetas para mostrar todo el árbol
+
+        # errores en la terminal
+        self.terminalPanel.show()
+        c_err = "#ff0000"
+        c_texto = "#ffffff"
+        c_ok = "#50fa7b"
+
+        if errores_sint:
+            html_errores = f"<span style='color: {c_err}; margin-top: 0;'>Errores sintácticos encontrados:</span><ul style='list-style: none; padding-left: 0; margin-top: 5px;'>"
+            for e in errores_sint:
+                html_errores += f"<li style='color: {c_err};  margin-bottom: 5px;'>{e}</li>"
+            html_errores += "</ul>"
+            self.terminalOutput.setHtml(html_errores)
+        else:
+            exito_msg = f"""
+                <span style='color: {c_texto}; margin-top: 0;'>Análisis sintáctico finalizado con éxito.</span>
+                <span style='color: {c_texto};'>0 errores sintácticos encontrados en el código.</span>
+            """
+            self.terminalOutput.setHtml(exito_msg)
+
+            self.generar_txt_ast(ast_raiz)
+
+    def dibujarAST(self, nodo_ast, parent_widget):
+        if not nodo_ast: return
+        
+        # armar texto del nodo
+        texto_item = nodo_ast.etiqueta
+        if nodo_ast.lexema:
+            texto_item += f" : '{nodo_ast.lexema}'"
+            
+        # crear carpeta o archivo visual
+        item = QTreeWidgetItem(parent_widget, [texto_item])
+        
+        # celeste para estructuras generales, naranja para los valores finales
+        if nodo_ast.lexema:
+            item.setForeground(0, QColor("#ce9178")) 
+        else:
+            item.setForeground(0, QColor("#9cdcfe")) 
+            
+        # llamada recursiva para dibujar a los hijos
+        for hijo in nodo_ast.hijos:
+            self.dibujarAST(hijo, item)
 
     # =========================
     # STATUS BAR FUNCTION
@@ -334,6 +421,7 @@ class Main(QMainWindow):
         self.textEdit.clear()
         self.setWindowTitle("IDE - Untitled")
         self.current_path = None
+        self.limpiarPanelesAnalisis()
     
     def openFile(self):
         # verificar si esta en untitled y con texto
@@ -371,6 +459,8 @@ class Main(QMainWindow):
             self.textEdit.setPlainText(fileText)
             self.current_path = fileName
             self.setWindowTitle("IDE - " + fileName)
+
+            self.limpiarPanelesAnalisis()
             
             # actualizar panel
             self.switchSidePanel(0, "Archivos Abiertos")
@@ -408,7 +498,9 @@ class Main(QMainWindow):
         self.textEdit.clear()
         archivos_restantes = self.get_all_file_items()
         if archivos_restantes: self.switchToFile(archivos_restantes[-1])
-        else: self.setWindowTitle("IDE - Untitled")
+        else: 
+            self.setWindowTitle("IDE - Untitled")
+            self.limpiarPanelesAnalisis()
 
     # función para exit o cuando se presiona la X de la ventana, dialogo de seguridad para el usuario
     def closeEvent(self, event):
@@ -612,6 +704,13 @@ class Main(QMainWindow):
         # cambiar panel y título al seleccionado
         self.stackedPanels.setCurrentIndex(index)
         self.sideBarDock.setWindowTitle(title)
+    
+    def limpiarPanelesAnalisis(self):
+        self.panelLexico.setPlainText("")
+        self.panelSintactico.clear()
+        # limpiar y ocultar terminal
+        self.terminalOutput.clear()
+        self.terminalPanel.hide()
 
     # =========================
     # FILE EXPLORER FUNCTIONS
@@ -680,6 +779,8 @@ class Main(QMainWindow):
         self.textEdit.setPlainText(self.opened_files_content.get(clicked_path, ""))
         self.current_path = clicked_path
         self.setWindowTitle("IDE - " + clicked_path)
+
+        self.limpiarPanelesAnalisis()
 
     def showFileContextMenu(self, pos):
         # menú click derecho
@@ -773,7 +874,9 @@ class Main(QMainWindow):
             self.textEdit.clear()
             archivos_restantes = self.get_all_file_items()
             if archivos_restantes: self.switchToFile(archivos_restantes[-1])
-            else: self.setWindowTitle("IDE - Untitled")
+            else: 
+                self.setWindowTitle("IDE - Untitled")
+                self.limpiarPanelesAnalisis()
             
         return True
 
@@ -859,6 +962,33 @@ class Main(QMainWindow):
         # tamaño de los iconos
         quickBar.setIconSize(QSize(23, 23))
         self.addToolBar(Qt.TopToolBarArea, quickBar)
+    
+    def generar_txt_ast(self, nodo_raiz):
+        if not nodo_raiz: return
+
+        lineas_texto = []
+
+        def recorrer(nodo, nivel):
+            # 4 espacios para cada nivel de profundidad
+            sangria = "    " * nivel
+            
+            # armar el texto del nodo
+            texto = f"{sangria}- {nodo.etiqueta}"
+            if nodo.lexema:
+                texto += f" : '{nodo.lexema}'"
+                
+            lineas_texto.append(texto)
+            
+            # llamada recursiva para los hijos
+            for hijo in nodo.hijos:
+                recorrer(hijo, nivel + 1)
+
+        # iniciar recorrido
+        recorrer(nodo_raiz, 0)
+
+        # guardar en el mismo directorio del proyecto
+        with open("arbol_sintactico_resultado.txt", "w", encoding="utf-8") as f:
+            f.write("\n".join(lineas_texto))
 
 
 # =========================
