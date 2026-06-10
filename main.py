@@ -371,11 +371,11 @@ class Main(QMainWindow):
         # crear carpeta o archivo visual
         item = QTreeWidgetItem(parent_widget, [texto_item])
         
-        # celeste para estructuras generales, naranja para los valores finales
-        if nodo_ast.lexema:
-            item.setForeground(0, QColor("#ce9178")) 
+        # celeste para estructuras generales (ramas), naranja para los valores finales (hojas)
+        if len(nodo_ast.hijos) == 0:
+            item.setForeground(0, QColor("#ce9178")) # naranja (no tiene hijos)
         else:
-            item.setForeground(0, QColor("#9cdcfe")) 
+            item.setForeground(0, QColor("#9cdcfe")) # celeste (si tiene hijos)
             
         # llamada recursiva para dibujar a los hijos
         for hijo in nodo_ast.hijos:
