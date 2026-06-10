@@ -58,31 +58,21 @@ class AnalizadorSintactico:
         if self.coincidir("RESERVADA", "main"):
             if self.coincidir("SIMBOLO", "{"):
                 nodo.agregar_hijo(self.lista_declaracion())
+                nodo.agregar_hijo(self.lista_sentencias()) # agregado como hermano
                 self.coincidir("SIMBOLO", "}")
         return nodo
 
-    # lista_declaracion → declaracion { declaracion }
+    # lista_declaraciones → declaracion_variable lista_declaraciones | ε
     def lista_declaracion(self):
         nodo = NodoAST("Lista Declaraciones")
-        while self.token_actual and self.token_actual.lexema != "}":
-            pos_inicial = self.pos 
-            
-            hijo = self.declaracion()
-            if hijo and len(hijo.hijos) > 0:
+        
+        # Solo iteramos si el token es un tipo de dato
+        while self.token_actual and self.token_actual.lexema in ["int", "float", "bool"]:
+            hijo = self.declaracion_variable()
+            if hijo:
                 nodo.agregar_hijo(hijo)
                 
-            # hacer que el analizador avance es preferible a que se quede atorado y no detecte más errores
-            if self.pos == pos_inicial:
-                self.registrar_error(f"Sintaxis inválida cerca de '{self.token_actual.lexema}'")
-                self.avanzar()
         return nodo
-
-    # declaracion → declaracion_variable | lista_sentencias
-    def declaracion(self):
-        if self.token_actual and self.token_actual.lexema in ["int", "float", "bool"]:
-            return self.declaracion_variable()
-        else:
-            return self.lista_sentencias()
 
     # declaracion_variable → tipo identificador ;
     def declaracion_variable(self):
@@ -375,18 +365,28 @@ class AnalizadorSintactico:
         return nodo
 
     # termino → factor { (* | / | %) factor }
-    # nivel 5: multiplicación y división (*, /, %) - mayor precedencia que suma
+    # nivel 5: multiplicación y división (*, /, %)
     def termino(self):
-        nodo = self.factor()
+        nodo = self.factor_unario() # <--- CAMBIO AQUÍ
         
         while self.token_actual and self.token_actual.lexema in ["*", "/", "%"]:
             nodo_op = NodoAST(f"Operador '{self.token_actual.lexema}'", self.token_actual.lexema, self.token_actual.linea)
             nodo_op.agregar_hijo(nodo)
             self.avanzar()
-            nodo_op.agregar_hijo(self.factor())
+            nodo_op.agregar_hijo(self.factor_unario()) # <--- CAMBIO AQUÍ
             nodo = nodo_op
             
         return nodo
+    
+    # factor_unario → - factor_unario | factor
+    def factor_unario(self):
+        if self.token_actual and self.token_actual.lexema == "-":
+            nodo_unario = NodoAST("Menos Unario", "-", self.token_actual.linea)
+            self.avanzar()
+            nodo_unario.agregar_hijo(self.factor_unario())
+            return nodo_unario
+            
+        return self.factor()
 
     # factor → componente [ ^ factor ]
     def factor(self):
@@ -446,7 +446,7 @@ class AnalizadorSintactico:
             else:
                 nodo.agregar_hijo(nodo_id)
                 
-        elif lexema == "!": # operador logico unario
+        elif lexema == "!": 
             nodo_not = NodoAST("Operador NOT", lexema, self.token_actual.linea)
             self.avanzar()
             nodo_not.agregar_hijo(self.componente())
